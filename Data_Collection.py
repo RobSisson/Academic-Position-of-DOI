@@ -4,84 +4,21 @@ import pandas as pd
 import numpy as np
 
 ### Time Management & Monitoring Packages ###
+import time
 from time import sleep
 import datetime as dt
 from datetime import timedelta
 from tqdm import tqdm
 
-### Internal Packages ###
-import Search_Variables as M
-import CrossRef_Functions as Cr
-import Datacite_Functions as Dc
-import DOAJ_Functions as Doaj
-
 
 import requests
-from bs4 import BeautifulSoup
 import json
 
-# def build_selection():
-# if Main.recommend_pointed_build == 1:
-#     build =
-# else:
-#     build =
-#
-# return build
 
 def api_call(url):
     # print(url)
     return requests.request("GET", url)
 
-
-def collect_data():
-    result_df_created=0
-
-    if M.databases["cr"] == 1:
-        result=Cr.cross_ref_search(M.date)
-        result_df_created+=1
-
-    if M.databases["dc"] == 1:
-        if result_df_created == 0:
-            result=Dc.datacite_search(M.date)
-            result_df_created+=1
-        else:
-            result=pd.concat([result, Dc.datacite_search(M.date)])
-
-    if M.databases["doaj"] == 1:
-        if result_df_created == 0:
-            result=Doaj.doaj_search(M.date)
-            result_df_created+=1
-        else:
-            result=pd.concat([result, Doaj.doaj_search(M.date)])
-
-    if M.results_use["export_to_csv"] == 1:
-        result.to_csv(convert_to_csv(M.date), sep='\t', encoding='utf-8', index=False)
-        print('CSV Created')
-    if M.results_use["print_results"] == 1:
-        print(result)
-
-
-def convert_to_csv(date):
-    name="Journal_Search"
-    if M.databases["cr"] == 1:
-        Cr="Cr"
-        name=".".join((name, Cr))
-
-    if M.databases["dc"] == 1:
-        Dc="Dc"
-        name=".".join((name, Dc))
-
-    if M.databases["doaj"] == 1:
-        Doaj="Doaj"
-        name=".".join((name, Doaj))
-
-    name=" - ".join((name, date))
-
-    import os
-    # path=r"C:\Users\rob_s\PycharmProjects\systemo\Storage"
-    output_file=os.path.join(M.directory, name+".csv")
-    print('CSV Path Created')
-    return output_file
 
 def doi_to_abstract_semantic(doi):
     sem_url='https://api.semanticscholar.org/v1/paper/'+str(doi)
@@ -130,8 +67,6 @@ def doi_to_key_info(doi):
 
     return ReturnValue(parsed["abstract"], parsed["fieldsOfStudy"], parsed["topics"])
 
-
-import time
 
 
 def doi_semantic_search(doi):
