@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 import requests
 import json
+from bs4 import BeautifulSoup
 
 
 def api_call(url):
@@ -59,6 +60,103 @@ class ReturnValue(object):
         self.Fields=Fields
         self.Topics=Topics
 
+from concurrent.futures import as_completed
+from requests_futures.sessions import FuturesSession
+from bs4 import BeautifulSoup
+
+def Concurrent_Abstract_Request(
+        suffix,
+):
+    suffix_2 = []
+
+    session=FuturesSession()
+
+    futures=[]
+
+    result ={}
+
+    for index, i in enumerate(suffix):
+        print(i)
+        future=session.get('https://api.crossref.org/v1/works/' + str(i))
+        future.i=i
+        futures.append(future)
+
+    for future in as_completed(futures):
+        print(future)
+        resp=future.result()
+        parsed =  resp.json()
+        if json_extract(parsed, 'abstract') in [[None], [], None]:
+            print('test')
+            suffix_2.append(future.i)
+        else:
+            print('else')
+            for i in json_extract(parsed, 'abstract'):
+                result[future.i] = (BeautifulSoup(i, features="html.parser").get_text())
+
+    futures_2 = []
+    for index, i in enumerate(suffix_2):
+        print('yoyoyo')
+        print(i)
+        future=session.get('https://doaj.org/api/v2/search/articles/doi%3A' + str(i))
+        future.i=i
+        futures.append(futures_2)
+
+    for future in as_completed(futures_2):
+        resp=future.result()
+        try:
+            parsed =  resp.json()
+        except:
+            print('break')
+            break
+        if json_extract(parsed, 'abstract') in [[None], [], None]:
+            print('Not found')
+        else:
+            print('found')
+            for i in json_extract(parsed, 'abstract'):
+                result[future.i]=(BeautifulSoup(i, features="html.parser").get_text())
+    print(suffix_2)
+    return result
+
+
+
+import asyncio
+import aiohttp
+from aiohttp import ClientSession, ClientConnectorError
+
+async def fetch_html(url: str, session: ClientSession, **kwargs) -> tuple:
+    try:
+        resp = await session.request(method="GET", url=url, **kwargs)
+    except ClientConnectorError:
+        return (url, 404)
+    return (url, resp.text)
+
+async def make_requests(urls: set, **kwargs) -> None:
+    async with ClientSession() as session:
+        tasks = []
+        for url in urls:
+            tasks.append(
+                fetch_html(url=url, session=session, **kwargs)
+            )
+        results = await asyncio.gather(*tasks)
+
+    for result in results:
+        print(f'{result[1]} - {str(result[0])}')
+
+if __name__ == "__main__":
+    import pathlib
+    import sys
+
+    if sys.version_info[0] == 3 and sys.version_info[1]>=8 and sys.platform.startswith('win'):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    assert sys.version_info >= (3, 7), "Script requires Python 3.7+."
+    here = pathlib.Path(__file__).parent
+
+
+
+
+
+
 
 def doi_to_key_info(doi):
     sem_url='https://api.semanticscholar.org/v1/paper/'+str(doi)
@@ -69,7 +167,7 @@ def doi_to_key_info(doi):
 
 
 
-def doi_semantic_search(doi):
+def Doi_to_Data(doi):
     doi_semantic_search_time=time.time()
 
     sem_url='https://api.semanticscholar.org/v1/paper/'+str(doi)
@@ -175,8 +273,8 @@ def doi_semantic_search(doi):
 
     #### Identify Node Rows for Populating ####
     # Mark Empty Abstracts
-    fillna=node.Abstract.fillna('')
-    cleaning=fillna.to_numpy()
+    fillna = node.Abstract.fillna('')
+    cleaning = fillna.to_numpy()
 
     np_where=np.where(cleaning == '')
 
@@ -201,19 +299,18 @@ def doi_semantic_search(doi):
     call_limit=100
     time_limit=400
 
-    node.to_csv('temp_node.csv')
+    node.to_csv('node.csv') # pre abstract collection backup
 
     for i in tqdm(list_empty_values, desc='Populating Documents'):
 
         if i == call_limit:
             time_difference=int((time.time()-doi_semantic_search_time))
             if time_difference<time_limit:
-                node.to_csv('temp_node.csv')
+                node.to_csv('node.csv') # backup
                 for s in range(0, time_difference):
                     sleep(1)
                     if s == time_difference:
                         print('Slept for '+str(s)+' seconds')
-
             call_limit+=100
             time_limit+=400
 
@@ -236,9 +333,35 @@ def doi_semantic_search(doi):
     print(str(input_fails)+' Number of Failed Inputs')
     print(str(collection_fails)+' Number of Failed Inputs')
 
+    ################
+
+    # Mark Empty Abstracts
+    fillna=node.Abstract.fillna('')
+    cleaning=fillna.to_numpy()
+
+    np_where=np.where(cleaning != '')
+    print(np_where)
+
+    list_empty_2_values=np_where[0]
+
+    print(list_empty_2_values)
+
+
+    doi_list= []
+    for i, index in enumerate(list_empty_2_values):
+        doi_list.append(node.DOI.iat[index])
+    print(doi_list)
+
+    node.to_csv('node.csv')  # pre abstract round 2 collection backup
+
+    abstracts = Concurrent_Abstract_Request(doi_list)
+
+    for i in list_empty_values:
+        node.Abstract.iat[list_empty_values[i]]=abstracts[i]
+
+    node.to_csv('node.csv') # final node
+
     return node, edge
 
-response = doi_semantic_search('10.1038/nrn3241')
 
-response[0].to_csv('node.csv')
 

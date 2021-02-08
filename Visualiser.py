@@ -22,8 +22,10 @@ import numpy as np
 import plotly.graph_objects as go
 
 
+
+
 # Visualize clusters
-def Visualise_Network_3D(
+def Visualise_3D_Network(
         nodes,
         node_title,
         outlier_x,
@@ -33,10 +35,10 @@ def Visualise_Network_3D(
         cluster_y,
         cluster_z,
         cluster_labels,
-        edges,
-        edge_influential,
-        edge_source,
-        edge_target,
+        edges = '',
+        edge_influential = '',
+        edge_source = '',
+        edge_target = '',
         scale_by=2,
         main_article_value=0
 ):
@@ -112,13 +114,15 @@ def Visualise_Network_3D(
     ###############################################################################################################################################################
     # Reference Trace
 
-    
-
     main_article_year=nodes.loc[main_article_value, 'Year']
 
     empty_references=nodes.index[nodes[outlier_y].isna() & nodes[cluster_y].isna()].to_list()
 
-    dirty_reference_index=nodes.index[nodes[outlier_z]<=main_article_year].to_list()
+    print(type(nodes[outlier_z]))
+    print('on one')
+    print(type(main_article_year))
+
+    dirty_reference_index=nodes.index[int(nodes[outlier_z])<=int(main_article_year)].to_list()
     dirty_reference_index.pop(main_article_value)
 
     # Removal of values with missing coordinates
@@ -218,7 +222,7 @@ def Visualise_Network_3D(
 
     empty_citations=nodes.index[nodes[outlier_y].isna() & nodes[cluster_y].isna()].to_list()
 
-    dirty_citation_index=nodes.index[nodes[outlier_z]>main_article_year].to_list()
+    dirty_citation_index=nodes.index[int(nodes[outlier_z])>int(main_article_year)].to_list()
     dirty_citation_index.pop(main_article_value)
 
     # Removal of values with missing coordinates
@@ -532,115 +536,123 @@ def Visualise_Network_3D(
     return figure
 
 
-######################################################################################################################################################################
-# styles: for right side hover/click component
-styles={
-    'pre': {
-        'border': 'thin lightgrey solid',
-        'overflowX': 'scroll'
+
+def Visualise_on_Local_Host(
+        nodes,
+        node_title,
+        outlier_x,
+        outlier_y,
+        outlier_z,
+        cluster_x,
+        cluster_y,
+        cluster_z,
+        cluster_labels,
+):
+    ######################################################################################################################################################################
+    # styles: for right side hover/click component
+    styles={
+        'pre': {
+            'border': 'thin lightgrey solid',
+            'overflowX': 'scroll'
+        }
     }
-}
 
-app.layout=html.Div([
-    #########################Title
-    html.Div([html.H1("Journal Vis")],
-             className="row",
-             style={'textAlign': "center"}),
-    #############################################################################################define the row
-    html.Div(
-        className="row",
-        children=[
+    app.layout=html.Div([
+        #########################Title
+        html.Div([html.H1("Journal Vis")],
+                 className="row",
+                 style={'textAlign': "center"}),
+        #############################################################################################define the row
+        html.Div(
+            className="row",
+            children=[
 
-            ############################################middle graph component
-            html.Div(
-                className="eight columns",
-                children=[dcc.Graph(id="my-graph",
-                                    figure=Visualise_Network_3D("test.csv",
-                                                                'Title',
-                                                                'Outliers_x',
-                                                                'Outliers_y',
-                                                                'Year',
-                                                                'Clustered_x',
-                                                                'Clustered_y',
-                                                                'Year',
-                                                                'Clustered_labels',
-                                                                "Data/node.csv",
-                                                                'Influential',
-                                                                'Source',
-                                                                'Target'
-                                                                ))],
-            ),
+                ############################################middle graph component
+                html.Div(
+                    className="eight columns",
+                    children=[dcc.Graph(id="my-graph",
+                                        figure=Visualise_3D_Network(nodes,
+                                                                    node_title,
+                                                                    outlier_x,
+                                                                    outlier_y,
+                                                                    outlier_z,
+                                                                    cluster_x,
+                                                                    cluster_y,
+                                                                    cluster_z,
+                                                                    cluster_labels,
+                                                                    ))],
+                ),
 
-            #########################################right side two output component
-            html.Div(
-                className="two columns",
-                children=[
-                    html.Div(
-                        className='twelve columns',
-                        children=[
-                            dcc.Markdown(d("""
-                            **Hover Data**
+                #########################################right side two output component
+                html.Div(
+                    className="two columns",
+                    children=[
+                        html.Div(
+                            className='twelve columns',
+                            children=[
+                                dcc.Markdown(d("""
+                                **Hover Data**
+    
+                                Hover over the nodes to see key information.
+                                """)),
+                                html.Pre(id='hover-data', style=styles['pre'])
+                            ],
+                            style={'height': '400px'}),
 
-                            Hover over the nodes to see key information.
-                            """)),
-                            html.Pre(id='hover-data', style=styles['pre'])
-                        ],
-                        style={'height': '400px'}),
-
-                    html.Div(
-                        className='twelve columns',
-                        children=[
-                            dcc.Markdown(d("""
-                            **Click Data**
-
-                            Click on journals in the graph for more information.
-                            """)),
-                            html.Pre(id='click-data', style=styles['pre'])
-                        ],
-                        style={'height': '400px'})
-                ]
-            )
-        ]
-    )
-])
+                        html.Div(
+                            className='twelve columns',
+                            children=[
+                                dcc.Markdown(d("""
+                                **Click Data**
+    
+                                Click on journals in the graph for more information.
+                                """)),
+                                html.Pre(id='click-data', style=styles['pre'])
+                            ],
+                            style={'height': '400px'})
+                    ]
+                )
+            ]
+        )
+    ])
 
 
-################################### callback for additional components
-# @app.callback(
-#     dash.dependencies.Output('my-graph', 'figure'))
-# def update_output():
-#
-#     return Visualise_Network_3D("test.csv",
-#                                 'Title',
-#                                 'Outliers_x',
-#                                 'Outliers_y',
-#                                 'Year',
-#                                 'Clustered_x',
-#                                 'Clustered_y',
-#                                 'Year',
-#                                 'Clustered_labels',
-#                                 "Data/node.csv",
-#                                 'Influential',
-#                                 'Source',
-#                                 'Target'
-#                                 )
-#     # to update the global variable of YEAR and ACCOUNT
+    ################################### callback for additional components
+    # @app.callback(
+    #     dash.dependencies.Output('my-graph', 'figure'))
+    # def update_output():
+    #
+    #     return Visualise_Network_3D("test.csv",
+    #                                 'Title',
+    #                                 'Outliers_x',
+    #                                 'Outliers_y',
+    #                                 'Year',
+    #                                 'Clustered_x',
+    #                                 'Clustered_y',
+    #                                 'Year',
+    #                                 'Clustered_labels',
+    #                                 "Data/node.csv",
+    #                                 'Influential',
+    #                                 'Source',
+    #                                 'Target'
+    #                                 )
+    #     # to update the global variable of YEAR and ACCOUNT
 
 
-################################ callback for right side components
-@app.callback(
-    dash.dependencies.Output('hover-data', 'children'),
-    [dash.dependencies.Input('my-graph', 'hoverData')])
-def display_hover_data(hoverData):
-    return json.dumps(hoverData, indent=2)
+    ################################ callback for right side components
+    @app.callback(
+        dash.dependencies.Output('hover-data', 'children'),
+        [dash.dependencies.Input('my-graph', 'hoverData')])
+    def display_hover_data(hoverData):
+        return json.dumps(hoverData, indent=2)
 
 
-@app.callback(
-    dash.dependencies.Output('click-data', 'children'),
-    [dash.dependencies.Input('my-graph', 'clickData')])
-def display_click_data(clickData):
-    return json.dumps(clickData, indent=2)
+    @app.callback(
+        dash.dependencies.Output('click-data', 'children'),
+        [dash.dependencies.Input('my-graph', 'clickData')])
+    def display_click_data(clickData):
+        return json.dumps(clickData, indent=2)
 
 
-if __name__ == '__main__':
-    app.run_server(debug=True)
+    if __name__ == '__main__':
+        app.run_server(debug=True)

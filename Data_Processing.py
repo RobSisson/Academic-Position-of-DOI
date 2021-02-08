@@ -25,7 +25,7 @@ def DataFrame_to_Documents(df, content_column):
     return documents, abstract_df
 
 
-def Topic_Model_2D(documents,
+def Model_2D_Topic(documents,
                    content_column,
                    embedding_progress_bar = True,
                    transformer = None,
@@ -54,6 +54,7 @@ def Topic_Model_2D(documents,
             return_doc=DataFrame_to_Documents(documents_df, content_column)
         else:
             return_doc=DataFrame_to_Documents(documents, content_column)
+            documents_df = documents
 
         documents=return_doc[0]
 
@@ -61,17 +62,18 @@ def Topic_Model_2D(documents,
         print(documents[0:3])
     print(type(documents))
 
+    fillna=documents.Abstract.notna('')
+    cleaning=fillna.to_numpy()
+
+    np_where=np.where(cleaning != '')
+
+    index_of_values=np_where[0]
+
     print('Loading Model...')
 
     model = SentenceTransformer(transformer)
 
     print('|||||| Setup Complete ||||||')
-    print(' |||||  \  \    /  /  ||||| ')
-    print('  ||||   \  \  /  /   ||||  ')
-    print('   |||    \  \/  /    |||   ')
-    print('    ||     \    /     ||    ')
-    print('     |      \  /      |     ')
-    print('             \/             ')
 
     number_of_documents = len(documents)
 
@@ -80,12 +82,7 @@ def Topic_Model_2D(documents,
     embeddings = model.encode(documents, show_progress_bar=embedding_progress_bar)
 
     print('||||  Encoding Complete ||||')
-    print(' ||||   \  \    /  /   |||| ')
-    print('  ||||   \  \  /  /   ||||  ')
-    print('   |||    \  \/  /    |||   ')
-    print('    ||     \    /     ||    ')
-    print('     |      \  /      |     ')
-    print('             \/             ')
+
 
     print('Umap Embeddings --> Hdbscan Clustering --> Data Preparation')
 
@@ -96,14 +93,14 @@ def Topic_Model_2D(documents,
     umap_embeddings=umap.UMAP(n_neighbors=5,
                               min_dist=0.3,
                               metric='correlation').fit_transform(embeddings.data)
-    print(umap_embeddings)
+    # print(umap_embeddings)
     print('Umap Embeddings Successful')
     import hdbscan
     cluster=hdbscan.HDBSCAN(min_cluster_size=15,
                             metric='euclidean',
                             cluster_selection_method='eom').fit(umap_embeddings)
 
-    print(cluster)
+    # print(cluster)
     print('Hdbscan Clustering Successful')
 
     import matplotlib.pyplot as plt
@@ -116,16 +113,6 @@ def Topic_Model_2D(documents,
 
     print('Exporting Data')
 
-
-
-    print('||| Data Export Complete |||')
-    print(' |||    \  \    /  /    ||| ')
-    print('  ||||   \  \  /  /   ||||  ')
-    print('   |||    \  \/  /    |||   ')
-    print('    ||     \    /     ||    ')
-    print('     |      \  /      |     ')
-    print('             \/             ')
-
     outliers=result.loc[result.labels == -1, :]
     clustered=result.loc[result.labels != -1, :]
 
@@ -135,7 +122,14 @@ def Topic_Model_2D(documents,
     clustered_y = clustered.y.to_frame(name='Clustered_y')
     clustered_labels = clustered.labels.to_frame(name='Clustered_labels')
 
-    result = pd.concat([documents_df, outliers_x, outliers_y, clustered_x, clustered_y, clustered_labels], axis=1)
+    result = pd.concat([ outliers_x, outliers_y, clustered_x, clustered_y, clustered_labels], axis=1)
+
+    for i, row_id in enumerate(index_of_values):
+        result = pd.concat([documents_df[row_id], result[i]])
+
+    result.to_csv('node.csv')
+
+    print('||| Data Export Complete |||')
 
     return result
 
@@ -144,28 +138,28 @@ def Topic_Model_2D(documents,
 
 # Topic_Model_2D("Data/node.csv", 'Abstract', transformer= 'allenai/scibert_scivocab_uncased').to_csv('test.csv')
 
-def Rescale_Column(
-        documents,
-        column_to_rescale,
-        scale,
-):
-    if isinstance(documents, str) and documents.index('csv'):
-        print('Loading CSV as DataFrame...')
-        data=pd.read_csv(documents)
-
-        print('Confirming if loaded correctly...')
-        print(data[column_to_rescale][0:3])
-
-        csv_converted=1
-
-    max = data[column_to_rescale].max()
-    min = data[column_to_rescale].min()
-
-    difference =  max - min
-
-    print(difference)
-
-print(Rescale_Column())
+# def Rescale_Column(
+#         documents,
+#         column_to_rescale,
+#         scale,
+# ):
+#     if isinstance(documents, str) and documents.index('csv'):
+#         print('Loading CSV as DataFrame...')
+#         data=pd.read_csv(documents)
+#
+#         print('Confirming if loaded correctly...')
+#         print(data[column_to_rescale][0:3])
+#
+#         csv_converted=1
+#
+#     max = data[column_to_rescale].max()
+#     min = data[column_to_rescale].min()
+#
+#     difference =  max - min
+#
+#     print(difference)
+#
+# print(Rescale_Column())
 
 #
 # data = pd.read_csv("Data/node.csv")
