@@ -18,14 +18,15 @@ import tensorflow
 
 def DataFrame_to_Documents(df, content_column):
 
-    abstract_df = df[content_column].dropna()
 
-    documents = abstract_df.tolist()
+    index = df.loc[df[content_column] != 'Empty'].index.tolist()
+    documents = df.loc[df[content_column] != 'Empty', content_column].astype(str).tolist()
+    print(documents)
 
-    return documents, abstract_df
+    return documents, index
 
 
-def Model_2D_Topic(documents,
+def Model_Abstract_Topics(data,
                    content_column,
                    embedding_progress_bar = True,
                    transformer = None,
@@ -39,35 +40,39 @@ def Model_2D_Topic(documents,
                    ):
     csv_converted=0
 
-    if isinstance(documents, str) and documents.index('csv'):
+    if isinstance(data, str) and data.index('csv'):
         print('Loading CSV as DataFrame...')
-        documents_df=pd.read_csv(documents)
+        documents_df=pd.read_csv(data)
+
+        length = len(documents_df)
 
         print('Confirming if loaded correctly...')
         print(documents_df[content_column][0:3])
 
         csv_converted=1
 
-    if isinstance(documents, pd.DataFrame) or isinstance(documents_df, pd.DataFrame):
+    if isinstance(data, pd.DataFrame) or isinstance(documents_df, pd.DataFrame):
         print('Converting Dataframe to list...')
         if csv_converted == 1:
             return_doc=DataFrame_to_Documents(documents_df, content_column)
         else:
-            return_doc=DataFrame_to_Documents(documents, content_column)
-            documents_df = documents
+            return_doc=DataFrame_to_Documents(data, content_column)
+
 
         documents=return_doc[0]
+        index = return_doc[1]
 
         print('Confirming if loaded correctly...')
         print(documents[0:3])
+
     print(type(documents))
 
-    fillna=documents.Abstract.notna('')
-    cleaning=fillna.to_numpy()
-
-    np_where=np.where(cleaning != '')
-
-    index_of_values=np_where[0]
+    # fillna=documents.Abstract.notna('')
+    # cleaning=fillna.to_numpy()
+    #
+    # np_where=np.where(cleaning != '')
+    #
+    # index_of_values=np_where[0]
 
     print('Loading Model...')
 
@@ -116,27 +121,48 @@ def Model_2D_Topic(documents,
     outliers=result.loc[result.labels == -1, :]
     clustered=result.loc[result.labels != -1, :]
 
-    outliers_x = outliers.x.to_frame(name='Outliers_x')
-    outliers_y = outliers.y.to_frame(name='Outliers_y')
-    clustered_x = clustered.x.to_frame(name='Clustered_x')
-    clustered_y = clustered.y.to_frame(name='Clustered_y')
-    clustered_labels = clustered.labels.to_frame(name='Clustered_labels')
+    outliers_x=outliers.x.to_list()  # (name='Outliers_x')
+    outliers_y=outliers.y.to_list()  # (name='Outliers_y')
+    clustered_x=clustered.x.to_list()  # (name='Clustered_x')
+    clustered_y=clustered.y.to_list()  # (name='Clustered_y')
+    clustered_labels=clustered.labels.to_list()  # (name='Clustered_labels')
 
-    result = pd.concat([ outliers_x, outliers_y, clustered_x, clustered_y, clustered_labels], axis=1)
+    for row_number in range(length):
+        try:
+            result_number = index.index(row_number)
+            print('value present in list')
+            documents_df['Outliers_x'][row_number] = outliers_x[result_number]
+            documents_df['Outliers_y'][row_number]=outliers_y[result_number]
+            documents_df['Clustered_x'][row_number]=clustered_x[result_number]
+            documents_df['Clustered_y'][row_number]=clustered_y[result_number]
+            documents_df['Clustered_labels'][row_number]=clustered_labels[result_number]
 
-    for i, row_id in enumerate(index_of_values):
-        result = pd.concat([documents_df[row_id], result[i]])
+        except:
+            print('maybe?')
 
-    result.to_csv('node.csv')
+
+    # result=pd.concat([documents_df, outliers_x, outliers_y, clustered_x, clustered_y, clustered_labels], axis=1)
+
+    print(result)
+    print(index)
+
+    # for i, row_id in enumerate(index):
+    #
+    #     print('mid')
+    #
+    #     result = pd.concat([documents_df.iloc[row_id], result[i]])
+
+    documents_df.to_csv('node.csv')
 
     print('||| Data Export Complete |||')
 
     return result
 
 
+# model = SentenceTransformer('allenai/scibert_scivocab_uncased')
+# print(model)
 
-
-# Topic_Model_2D("Data/node.csv", 'Abstract', transformer= 'allenai/scibert_scivocab_uncased').to_csv('test.csv')
+Model_Abstract_Topics("node.csv", 'Abstract', transformer= 'allenai/scibert_scivocab_uncased').to_csv('test.csv')
 
 # def Rescale_Column(
 #         documents,
