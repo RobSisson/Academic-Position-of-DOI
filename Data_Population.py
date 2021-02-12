@@ -1,41 +1,26 @@
 ### Data Collection ###
 import requests
-import json
+# import json
 import asyncio
 from aiohttp import ClientSession, ClientConnectorError
 
 ### Data Management Packages ###
 import pandas as pd
-import numpy as np
 
 ### Time Management & Monitoring Packages ###
 import time
-from time import sleep
-from tqdm import tqdm
+
+# from tqdm import tqdm # functionality still to add
 
 ### Used in tests ###
-import datetime as dt
-from datetime import timedelta
-from bs4 import BeautifulSoup
+# import datetime as dt
+# from datetime import timedelta
+# from bs4 import BeautifulSoup
 
 
 def api_call(url):
     # print(url)
     return requests.request("GET", url)
-
-
-# class ReturnValue(object):
-#     __slots__=["Abstract", "Fields", "Topics"]
-#
-#     def __init__(self, Abstract, Fields, Topics):
-#         self.Abstract=Abstract
-#         self.Fields=Fields
-#         self.Topics=Topics
-
-
-import asyncio
-from aiohttp import ClientSession, ClientConnectorError
-import time
 
 
 def Compile_Endpoint_List(
@@ -46,7 +31,6 @@ def Compile_Endpoint_List(
     endpoint=[]
 
     for i, e in enumerate(endpoints):
-        print(i)
 
         apis_to_call_temp=[]
         for index, api in enumerate(apis_to_call[i]):
@@ -155,39 +139,6 @@ def Create_URL(
 
     return url
 
-
-# def Create_Next_URLs(
-#         api_list,
-#         endpoint_list,
-# ):
-#     url_list = []
-#
-#
-#     for i, endpoint in enumerate(endpoint_list):
-#
-#         # print(endpoint[2])
-#         # print('endpoint above')
-#         if endpoint[2] == None: # would it be faster to remove the called endpoints from this list?
-#             done_count = 0
-#             for i, api_to_call in enumerate(endpoint[1]):
-#
-#                 if api_to_call[0] == 0:
-#                     api_number = api_to_call[1] # this would be the number of the api to call, not the api itself
-#
-#
-#
-#                     url_list.append(Create_URL(api_list[api_number], endpoint[0]))
-#
-#                     api_to_call[1] = 1
-#                     break
-#
-#                 elif api_to_call[1] == 1:
-#                     done_count += 1
-#
-#                 if len(endpoint[1]) <= done_count:
-#                     print("All Api's for " + str(endpoint[0] + ' searched, and no result found'))
-#
-#     return url_list
 
 async def check_api(api_list, api_number) -> bool:
     api_to_check=api_list[api_number]
@@ -358,40 +309,35 @@ async def DOI_List_to_Result(
 
     while len(endpoint_list)>(len(result)):
         while_loop+=1
-        print('while loop no '+str(while_loop))
-        print(len(endpoint_list)-len(result))
+
         url_list=await Create_Next_URLs(api_list, endpoint_list)
 
         response=await asyncio.gather(make_requests(urls=url_list))
 
         for i, item in enumerate(response[0]):
-            print('below')
-            print(item)
-
-            print(item[0])
 
             response_id=item[0]
-            # url_called = item[1]
+
             filtered_result=item[2]
 
             if filtered_result != 'No Result Found':
-                print('Result found, appending...')
+                # print('Result found, appending...')
                 result.append(item)
-                print('Preventing future api calls for this endpoint...')
+                # print('Preventing future api calls for this endpoint...')
                 for i, api_to_call in enumerate(endpoint_list[response_id][1]):
                     if api_to_call[0] == 0:
                         api_to_call[0]=2  # Changing all remaining api's to call to value 2
             else:
-                print('No result found for this endpoint, when calling this API')
+                # print('No result found for this endpoint, when calling this API')
 
                 for i, api_to_call in enumerate(endpoint_list[response_id][1]):
                     if api_to_call[0] == 0:
-                        print('Preventing this api from being called again')
+                        # print('Preventing this api from being called again')
                         api_to_call[0]=1  # Changing previously called api value to 1
                         break
 
                 if while_loop == len(endpoint_list[response_id][1]):
-                    print('Appending to empty result...')
+                    # print('Appending to empty result...')
                     result.append(item)
 
     reordered=[[y, z] for x, y, z in sorted(result)]
@@ -423,12 +369,8 @@ def Populate_Journal_Info(
         else: # uses Paper_Id instead, though this can only be used in semantic scholar, not other DOI searches
             endpoint_list.append(id_list[i])
 
-
-    print('end point '  + str(endpoint_list))
-    print(index_list)
-
     abstracts = asyncio.run(DOI_List_to_Result(endpoint_list))
-    print(abstracts)
+
 
     from bs4 import BeautifulSoup
 

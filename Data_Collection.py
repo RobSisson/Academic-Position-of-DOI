@@ -137,7 +137,7 @@ def Doi_to_Data(doi):
 
     return node, edge
 
-# Doi_to_Data('10.1093/CJE/BEY045')
+Doi_to_Data('10.1093/CJE/BEY045')
 
 
 
