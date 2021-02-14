@@ -16,14 +16,9 @@ from sentence_transformers import SentenceTransformer
 
 import tensorflow
 
-from decimal import *
-getcontext().prec=4
-
 def DataFrame_to_Documents(df, content_column, content_column_2):
-
-
-    empty_index = df.loc[df[content_column] != ''].index.tolist()
-    documents = df.loc[df[content_column] != '', content_column].astype(str).tolist()
+    empty_index=df.loc[df[content_column] != ''].index.tolist()
+    documents=df.loc[df[content_column] != '', content_column].astype(str).tolist()
     # print(documents)
 
     # abstract_list=df[content_column].astype(str).tolist()
@@ -35,23 +30,14 @@ def DataFrame_to_Documents(df, content_column, content_column_2):
     #         documents_list.append(abstract_list[i])
     #     else:  # uses Title instead, though this will likely result in a poorer representation, though all documents will be included
     #         documents_list.append('')
-    
+
     return documents, empty_index
 
-
-def Model_Abstract_Topics(data,
-                          content_column,
-                          content_column_2,
-                          embedding_progress_bar = True,
-                          transformer = None,
-                          umap_n_neighbors = None,
-                          umap_n_components = None,
-                          umap_min_dist = None,
-                          umap_metric = None,
-                          hbdscan_min_cluster_size = None,
-                          hbdscan_metric = None,
-                          hbdscane_cluster_selection_method = None,
-                          ):
+def Prepare_Data(
+        data,
+        content_column,
+        content_column_2
+):
     csv_converted=0
 
     if isinstance(data, str) and data.index('csv'):
@@ -73,16 +59,20 @@ def Model_Abstract_Topics(data,
         else:
             return_doc=DataFrame_to_Documents(data, content_column, content_column_2)
 
-
         documents=return_doc[0]
         empty_index_list = return_doc[1]
 
+        index_dict = {}
+        for index, item in enumerate(empty_index_list):
+            index_dict[item] = index
+
+    return documents, index_dict
 
 
-        print('Confirming if loaded correctly...')
-        print(documents[0:3])
-
-    print(type(documents))
+def Model_Topics(documents,
+                 embedding_progress_bar = True,
+                 transformer = None,
+                 ):
 
     # fillna=documents.Abstract.notna('')
     # cleaning=fillna.to_numpy()
@@ -95,117 +85,133 @@ def Model_Abstract_Topics(data,
 
     model = SentenceTransformer(transformer)
 
-    print('|||||| Setup Complete ||||||')
-
     number_of_documents = len(documents)
 
     print('Encoding ' + str(number_of_documents) + ' documents using ' + str(transformer) + ':')
 
     embeddings = model.encode(documents, show_progress_bar=embedding_progress_bar)
 
+    print('Embedding Complete')
 
     return embeddings
 
-def Umap_plot(
-        embeddings
+def Plot_and_Cluster(
+        embeddings,
+        umap_n_neighbors=None,
+        umap_n_components=None,
+        umap_min_dist=None,
+        umap_metric=None,
+        hbdscan_min_cluster_size=None,
+        hbdscan_metric=None,
+        hbdscane_cluster_selection_method=None,
 ):
 
     import umap
+    import hdbscan
 
-    print(embeddings)
-
+    print('Umap Embeddings Transformation...')
     umap_embeddings=umap.UMAP(n_neighbors=5,
                               min_dist=0.3,
                               metric='correlation').fit_transform(embeddings.data)
 
-    # Prepare data
-    umap_data=umap.UMAP(n_neighbors=15, n_components=2, min_dist=0.0, metric='cosine').fit_transform(embeddings)
+    print('Umap Data Transformation...')
+    umap_data=umap.UMAP(n_neighbors=15,
+                        n_components=2,
+                        min_dist=0.0,
+                        metric='cosine').fit_transform(embeddings)
+    print('Umap Successful')
 
-    # print(umap_embeddings)
-    print('Umap Embeddings Successful')
-    import hdbscan
+    print('HBDScan Clustering...')
     cluster=hdbscan.HDBSCAN(min_cluster_size=5,
                             metric='euclidean',
                             cluster_selection_method='eom',
                             allow_single_cluster=True).fit(umap_embeddings)
-    print(cluster)
-    print('cluster abv')
 
-    # print(cluster)
     print('Hdbscan Clustering Successful')
 
-    import matplotlib.pyplot as plt
+    print('Preparing Data for Export...')
+    umap_data=pd.DataFrame(umap_data, columns=['x data', 'y data'])
+    umap_embeddings=pd.DataFrame(umap_embeddings, columns=['x embeddings', 'y embeddings'])
 
-
-    result=pd.DataFrame(umap_data, columns=['x', 'y'])
+    result = umap_data.combine(umap_embeddings, func)
 
     if cluster.labels_ != []:
         result['labels']=cluster.labels_
     else:
         result['labels']=0
-    print('Data Preparation Successful')
 
-    print('Exporting Data')
+    result['outliers']=result.loc[result.labels == -1, :]
+    result['clusters']=result.loc[result.labels != -1, :]
 
-    outliers=result.loc[result.labels == -1, :]
-    clustered=result.loc[result.labels != -1, :]
+    print('Data Exported')
+    
+    return result
+    
+def Merge_Mapping_Results(
+        data,
+        results,
+        index_dictionary
+):
 
-    outliers_x = outliers.x.to_list()  # (name='Outliers_x')
-    print(outliers_x)
-    print('outliers x aabov')
-    outliers_y = outliers.y.to_list()  # (name='Outliers_y')
-    print(outliers_y)
+    df = pd.DataFrame(None, columns=[list(results.columns.values)])
 
-    clustered_x = clustered.x.to_list()  # (name='Clustered_x')
-    print(clustered_x)
-    print('clus x clus y')
+    for i in range(len(data)):
+        try:
+            index = index_dictionary[i]
+            df.loc[i] = results.loc[index]
+        except:
+            df.loc[i] = 0
 
-    clustered_y = clustered.y.to_list()  # (name='Clustered_y')
-    print(clustered_y)
+    result = data.combine(df)
 
-    cluster_labels = clustered.labels.to_list()  # (name='Clustered_labels')
-    print(cluster_labels)
-
-    documents_df['Outliers_x'] = 0
-    documents_df['Outliers_y'] = 0
-    documents_df['Clustered_x'] = 0
-    documents_df['Clustered_y'] = 0
-    documents_df['Cluster_labels'] = 0
-
-    # empty_index_list
-    index = documents_df.index.to_list()
+    return result
 
 
+data = Prepare_Data("node.csv", 'Abstract', 'Title')
 
-    for i, row_number in enumerate(index):
-        print(row_number)
-        if row_number in empty_index_list:
-            result_number=empty_index_list.index(row_number)
-            if outliers_x:
+embeddings = Model_Topics(data[0], transformer= 'allenai/scibert_scivocab_uncased')
 
-                documents_df.at[row_number, 'Outliers_x'] = outliers_x[result_number]
-                documents_df.at[row_number, 'Outliers_y'] = outliers_y[result_number]
+coords = Plot_and_Cluster(embeddings)
 
-            if clustered_x:
-                print('test')
-                print(Decimal(clustered_x[result_number]))
-                print('ab')
+result = Merge_Mapping_Results(data, coords, data[1])
 
-                documents_df.at[row_number, 'Clustered_x'] = Decimal(clustered_x[result_number])
-                documents_df.at[row_number, 'Clustered_y'] = Decimal(clustered_y[result_number])
+print(result)
 
-            if cluster_labels != []:
-                documents_df.at[row_number, 'Cluster_labels'] = cluster_labels[result_number]
+result.to_csv('pacman.csv')
 
-    print('||| Data Export Complete |||')
+    # # empty_index_list
+    # index = data.index.to_list()
+    #
+    #
+    #
+    # for i, row_number in enumerate(index):
+    #     print(row_number)
+    #     if row_number in empty_index_list:
+    #         result_number=empty_index_list.index(row_number)
+    #         if outliers_x:
+    #
+    #             data.at[row_number, 'Outliers_x'] = outliers_x[result_number]
+    #             data.at[row_number, 'Outliers_y'] = outliers_y[result_number]
+    #
+    #         if clustered_x:
+    #             print('test')
+    #             print(Decimal(clustered_x[result_number]))
+    #             print('ab')
+    #
+    #             data.at[row_number, 'Clustered_x'] = Decimal(clustered_x[result_number])
+    #             data.at[row_number, 'Clustered_y'] = Decimal(clustered_y[result_number])
+    #
+    #         if cluster_labels != []:
+    #             data.at[row_number, 'Cluster_labels'] = cluster_labels[result_number]
+    #
+    # print('||| Data Export Complete |||')
 
-    return documents_df
 
 
 # model = SentenceTransformer('allenai/scibert_scivocab_uncased')
 # print(model)
 
-Model_Abstract_Topics("node.csv", 'Abstract', 'Title', transformer= 'allenai/scibert_scivocab_uncased').to_csv('final.csv')
+
 
 # def Rescale_Column(
 #         documents,
