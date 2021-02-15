@@ -352,6 +352,8 @@ def Populate_Journal_Info(
     if isinstance(documents, str) and documents.index('csv'):
         print('Loading CSV as DataFrame...')
         node=pd.read_csv(documents)
+    else:
+        node = documents
 
     #### Identify Node Rows for Populating ####
     # Mark Empty Abstracts
@@ -380,7 +382,7 @@ def Populate_Journal_Info(
             soup = BeautifulSoup(abstract[1], 'html.parser').get_text()
             node.Abstract.iat[index_list[i]] = soup
         elif abstract[1] == 'No Result Found':
-            node.Abstract.iat[index_list[i]]=''
+            node.Abstract.iat[index_list[i]]='Empty'
         else:
             node.Abstract.iat[index_list[i]]=abstract[1]
 
@@ -388,4 +390,4 @@ def Populate_Journal_Info(
 
     return node
 
-print(Populate_Journal_Info('node.csv'))
+# print(Populate_Journal_Info('node.csv'))

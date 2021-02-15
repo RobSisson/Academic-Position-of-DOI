@@ -17,19 +17,10 @@ from sentence_transformers import SentenceTransformer
 import tensorflow
 
 def DataFrame_to_Documents(df, content_column, content_column_2):
-    empty_index=df.loc[df[content_column] != ''].index.tolist()
-    documents=df.loc[df[content_column] != '', content_column].astype(str).tolist()
-    # print(documents)
+    empty_index=df.loc[df[content_column] != 'Empty'].index.tolist()
+    documents=df.loc[df[content_column] != 'Empty', content_column].astype(str).tolist()
 
-    # abstract_list=df[content_column].astype(str).tolist()
-    # title_list=df[content_column_2].astype(str).tolist()
-    #
-    # documents_list=[]
-    # for i, abstract in enumerate(abstract_list):
-    #     if abstract != '':
-    #         documents_list.append(abstract_list[i])
-    #     else:  # uses Title instead, though this will likely result in a poorer representation, though all documents will be included
-    #         documents_list.append('')
+    print(documents)
 
     return documents, empty_index
 
@@ -133,51 +124,70 @@ def Plot_and_Cluster(
     umap_data=pd.DataFrame(umap_data, columns=['x data', 'y data'])
     umap_embeddings=pd.DataFrame(umap_embeddings, columns=['x embeddings', 'y embeddings'])
 
-    result = umap_data.combine(umap_embeddings, func)
+    result = pd.concat([umap_data, umap_embeddings], axis=1)
 
-    if cluster.labels_ != []:
+
+    try:
         result['labels']=cluster.labels_
-    else:
+    except:
         result['labels']=0
 
-    result['outliers']=result.loc[result.labels == -1, :]
-    result['clusters']=result.loc[result.labels != -1, :]
+
+    # result['outliers']=result.loc[result.labels == -1, result.labels]
+    # result['clusters']=result.loc[result.labels != -1, result.labels]
 
     print('Data Exported')
-    
+
+    # result.to_csv('result.csv')
+
     return result
     
 def Merge_Mapping_Results(
-        data,
+        csv,
         results,
         index_dictionary
 ):
 
-    df = pd.DataFrame(None, columns=[list(results.columns.values)])
+    if isinstance(csv, str) and csv.index('csv'):
+        print('Loading CSV as DataFrame...')
+        data=pd.read_csv(csv)
+    else:
+        data = csv
 
+    df = pd.DataFrame(None, columns=list(results.columns))
+    print(df.columns)
+    print(len(data))
+
+    empty = 0
     for i in range(len(data)):
+        df.loc[i]='Empty'
         try:
             index = index_dictionary[i]
-            df.loc[i] = results.loc[index]
-        except:
-            df.loc[i] = 0
 
-    result = data.combine(df)
+            df.loc[i, 'x data'] = results.loc[index,'x data']
+            df.loc[i,'y data']=results.loc[index,'y data']
+            df.loc[i,'x embeddings']=results.loc[index,'x embeddings']
+            df.loc[i,'y embeddings']=results.loc[index,'y embeddings']
+            df.loc[i,'labels']=results.loc[index,'labels']
+
+        except:
+            empty += 1
+
+
+    result = pd.concat([data, df], axis=1)
 
     return result
 
 
-data = Prepare_Data("node.csv", 'Abstract', 'Title')
-
-embeddings = Model_Topics(data[0], transformer= 'allenai/scibert_scivocab_uncased')
-
-coords = Plot_and_Cluster(embeddings)
-
-result = Merge_Mapping_Results(data, coords, data[1])
-
-print(result)
-
-result.to_csv('pacman.csv')
+# data = Prepare_Data("node.csv", 'Abstract', 'Title')
+#
+# embeddings = Model_Topics(data[0], transformer= 'allenai/scibert_scivocab_uncased')
+#
+# coords = Plot_and_Cluster(embeddings)
+#
+# result = Merge_Mapping_Results("node.csv", coords, data[1])
+#
+# result.to_csv('node.csv')
 
     # # empty_index_list
     # index = data.index.to_list()
