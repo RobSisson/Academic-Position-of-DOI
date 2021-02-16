@@ -22,19 +22,32 @@ import numpy as np
 import plotly.graph_objects as go
 
 
+def Column_Filter(
+        df,
+        column,
+        value_to_remove='',
+):
+    values=df.loc[df[column] != value_to_remove, column].tolist()
+
+    return values
 
 
 # Visualize clusters
 def Visualise_3D_Network(
         nodes,
         node_title,
-        outlier_x,
-        outlier_y,
-        outlier_z,
-        cluster_x,
-        cluster_y,
-        cluster_z,
-        cluster_labels,
+        data_x,
+        data_y,
+        z_column,
+        # embeddings_x,
+        # embeddings_y,
+        # outlier_x,
+        # outlier_y,
+        # outlier_z,
+        # cluster_x,
+        # cluster_y,
+        # cluster_z,
+        labels,
         edges = '',
         edge_influential = '',
         edge_source = '',
@@ -47,51 +60,49 @@ def Visualise_3D_Network(
         nodes=pd.read_csv(nodes)
 
         print('Confirming if loaded correctly...')
-        print(nodes[outlier_x][0:3])
+        print(nodes[data_x][0:3])
 
     items_to_trace=[]  # contains edge_trace, node_trace, middle_node_trace
 
-    # Combining outliers & clustered coords for reference / citation plotting
+    x_coords = nodes[nodes[data_x] != 'Empty', data_x].tolist()
 
-    x_coords=[] # Concatenate All X & Y Coords from Outlier & Clustered Columns
+    x=nodes.index[nodes[data_x] != 'Empty'].tolist()
 
-    x_outlier=nodes.index[nodes[outlier_x].notna()].tolist()
-    x_clustered=nodes.index[nodes[cluster_x].notna()].tolist()
 
-    length_x=len(x_outlier)+len(x_clustered)
+def Column_Filter(
+        df,
+        column,
+        value_to_remove = '',
+):
+    values =  df[df[column] != value_to_remove].tolist()
 
-    for i in range(0, length_x):
-        x_outlier_coords=nodes.loc[i, outlier_x]
-        x_clustered_coords=nodes.loc[i, cluster_x]
+    for i in range(0, len(x)):
+        coords=nodes.loc[i, data_x]
 
-        if i in x_outlier: x_coords.append(x_outlier_coords)
-        if i in x_clustered: x_coords.append(x_clustered_coords)
-
-    y_coords=[]
-
-    y_outlier=nodes.index[nodes[outlier_y].notna()].tolist()
-    y_clustered=nodes.index[nodes[cluster_y].notna()].tolist()
-
-    length_y=len(y_outlier)+len(y_clustered)
-
-    for i in range(0, length_y):
-        y_outlier_coords=nodes.loc[i, outlier_y]
-        y_clustered_coords=nodes.loc[i, cluster_y]
         if i in y_outlier: y_coords.append(y_outlier_coords)
         if i in y_clustered: y_coords.append(y_clustered_coords)
 
+
+    y_coords=nodes[nodes[data_y] != 'Empty', data_y].tolist()
+
+    x_data_index = nodes.index[nodes[data_x] != 'Empty'].tolist()
+    y_data_index = nodes.index[nodes[data_y] != 'Empty'].tolist()
+    # x_embeddings_index = nodes.index[nodes[embeddings_x] != 'Empty'].tolist()
+    # y_embeddings_index = nodes.index[nodes[embeddings_y] != 'Empty'].tolist()
+
     # z_coords=[] #  Not currently active as both outliers and clusters use the same z coord column ('Year')
 
-    # z_outlier=nodes.index[nodes[outlier_z].notna()].tolist()
-    # z_clustered=nodes.index[nodes[cluster_z].notna()].tolist()
-
-    # length_z=len(z_outlier)+len(z_clustered)
-
-    # for i in range(0, length_z):
-    #     z_outlier_coords=nodes.loc[i, outlier_z]
-    #     z_clustered_coords=nodes.loc[i, cluster_z]
-    #     if i in z_outlier: z_coords.append(z_outlier_coords)
-    #     if i in z_clustered: z_coords.append(z_clustered_coords)
+    # if outliers and clusters are in seperate columns, use below script to merge
+    # y_outlier=nodes.index[nodes[outlier_y].notna()].tolist()
+    # y_clustered=nodes.index[nodes[cluster_y].notna()].tolist()
+    #
+    # length_y=len(y_outlier)+len(y_clustered)
+    #
+    # for i in range(0, length_y):
+    #     y_outlier_coords=nodes.loc[i, outlier_y]
+    #     y_clustered_coords=nodes.loc[i, cluster_y]
+    #     if i in y_outlier: y_coords.append(y_outlier_coords)
+    #     if i in y_clustered: y_coords.append(y_clustered_coords)
 
     #########################################################################################################################
     # # Creation of Lists of Influential Papers  (Separate lists to enable customisation)
@@ -116,13 +127,13 @@ def Visualise_3D_Network(
 
     main_article_year=nodes.loc[main_article_value, 'Year']
 
-    empty_references=nodes.index[nodes[outlier_y].isna() & nodes[cluster_y].isna()].to_list()
+    empty_references=nodes.index[nodes[data_y]=='Empty' and nodes[data_y]=='Empty'].to_list()
 
-    print(type(nodes[outlier_z]))
+    print(type(nodes[z_column]))
     print('on one')
     print(type(main_article_year))
 
-    dirty_reference_index=nodes.index[int(nodes[outlier_z])<=int(main_article_year)].to_list()
+    dirty_reference_index=nodes.index[int(nodes[z_column])<=int(main_article_year)].to_list()
     dirty_reference_index.pop(main_article_value)
 
     # Removal of values with missing coordinates
@@ -134,7 +145,7 @@ def Visualise_3D_Network(
         if item != main_article_value:
             x_coord=x_coords[item]
             y_coord=y_coords[item]
-            z_coord=nodes.loc[item, outlier_z]
+            z_coord=nodes.loc[item, z_column]
             # print(z_coord)
 
             title=nodes.loc[item, node_title]
@@ -220,9 +231,9 @@ def Visualise_3D_Network(
 
     # Tracing of Clustered Nodes
 
-    empty_citations=nodes.index[nodes[outlier_y].isna() & nodes[cluster_y].isna()].to_list()
+    empty_citations=nodes.index[nodes[data_y]=='Empty' and nodes[data_y]=='Empty'].to_list()
 
-    dirty_citation_index=nodes.index[int(nodes[outlier_z])>int(main_article_year)].to_list()
+    dirty_citation_index=nodes.index[int(nodes[z_column])>int(main_article_year)].to_list()
     dirty_citation_index.pop(main_article_value)
 
     # Removal of values with missing coordinates
@@ -237,7 +248,7 @@ def Visualise_3D_Network(
         if item != main_article_value:
             x_coord=x_coords[item]
             y_coord=y_coords[item]
-            z_coord=nodes.loc[item, outlier_z]
+            z_coord=nodes.loc[item, z_column]
 
             # Setting variables, to indicate influence
             opacity=1
@@ -339,121 +350,121 @@ def Visualise_3D_Network(
     #                                                  opacity=opacity
     #                                              )))
 
-    ################################################################################################################################################################
-    # Cluster Mesh
-
-    cluster_labels_list=[x for x in nodes[cluster_labels].unique().tolist() if str(x) != 'nan']
-
-
-    for i, cluster_label in enumerate(cluster_labels_list):
-        cluster_index_list=nodes.index[nodes[cluster_labels] == cluster_label].to_list()
-
-        cluster_x_coord_list=nodes.loc[cluster_index_list, cluster_x].to_list()
-        cluster_y_coord_list=nodes.loc[cluster_index_list, cluster_y].to_list()
-        cluster_z_coord_list=nodes.loc[cluster_index_list, cluster_z].to_list()
-
-        cluster_x_coord_list=[x ** scale_by for x in cluster_x_coord_list]
-        cluster_y_coord_list=[x ** scale_by for x in cluster_y_coord_list]
-
-        mesh_colour=['red', 'blue', 'green']
-
-        mesh_trace=dict(
-            alphahull=10,
-            name=i,
-            opacity=0.1,
-            type="mesh3d",
-            color=mesh_colour[i],
-            x=cluster_x_coord_list,
-            y=cluster_y_coord_list,
-            z=cluster_z_coord_list
-        )
-        items_to_trace.append(mesh_trace)
-
-    ############################################################################################################################################################
-    # Edge Trace
-
-    edge_x=[]
-    edge_y=[]
-    edge_z=[]
-
-    for index, i in enumerate(reference_index):
-        if i != main_article_value:
-            x0 = x_coords[i]
-            x1 = x_coords[main_article_value]
-
-            y0 = y_coords[i]
-            y1 = y_coords[main_article_value]
-
-            z0 = nodes.loc[i, outlier_z]
-            z1 = nodes.loc[main_article_value, outlier_z]
-
-            edge_x.append(x0 ** scale_by)
-            edge_x.append(x1 ** scale_by)
-            edge_x.append(None)
-
-            edge_y.append(y0 ** scale_by)
-            edge_y.append(y1 ** scale_by)
-            edge_y.append(None)
-
-            edge_z.append(z0)
-            edge_z.append(z1)
-            edge_z.append(None)
-
-            reference_edge_trace=go.Scatter3d(
-                x=edge_x,
-                y=edge_y,
-                z=edge_z,
-                line=dict(width=1,
-                          # cmax=main_article_year,
-                          # cmin=1950,
-                          color='orange'),
-                          # colorscale='blugrn'),
-                hoverinfo='none',
-                mode='lines')
-
-            items_to_trace.append(reference_edge_trace)
-
-    edge_x=[]
-    edge_y=[]
-    edge_z=[]
-
-    for index, i in enumerate(citation_index):
-        if i != main_article_value:
-
-            x0 = x_coords[i]
-            x1 = x_coords[main_article_value]
-
-            y0 = y_coords[i]
-            y1 = y_coords[main_article_value]
-
-            z0 = nodes.loc[i, outlier_z]
-            z1 = nodes.loc[main_article_value, outlier_z]
-
-            edge_x.append(x0 ** scale_by)
-            edge_x.append(x1 ** scale_by)
-            edge_x.append(None)
-
-            edge_y.append(y0 ** scale_by)
-            edge_y.append(y1 ** scale_by)
-            edge_y.append(None)
-
-            edge_z.append(z0)
-            edge_z.append(z1)
-            edge_z.append(None)
-
-            citation_edge_trace=go.Scatter3d(
-                x=edge_x,
-                y=edge_y,
-                z=edge_z,
-                line=dict(width=1,
-                          # cmax=2022,
-                          # cmin=main_article_year,
-                          color='green'),
-                          # colorscale="inferno"),
-                hoverinfo='none',
-                mode='lines')
-
-            items_to_trace.append(citation_edge_trace)
+    # ################################################################################################################################################################
+    # # Cluster Mesh
+    #
+    # cluster_labels_list=[x for x in nodes[labels].unique().tolist() if str(x) != 'nan']
+    #
+    #
+    # for i, cluster_label in enumerate(cluster_labels_list):
+    #     cluster_index_list=nodes.index[nodes[labels] == cluster_label].to_list()
+    #
+    #     cluster_x_coord_list=nodes.loc[cluster_index_list, cluster_x].to_list()
+    #     cluster_y_coord_list=nodes.loc[cluster_index_list, cluster_y].to_list()
+    #     cluster_z_coord_list=nodes.loc[cluster_index_list, cluster_z].to_list()
+    #
+    #     cluster_x_coord_list=[x ** scale_by for x in cluster_x_coord_list]
+    #     cluster_y_coord_list=[x ** scale_by for x in cluster_y_coord_list]
+    #
+    #     mesh_colour=['red', 'blue', 'green']
+    #
+    #     mesh_trace=dict(
+    #         alphahull=10,
+    #         name=i,
+    #         opacity=0.1,
+    #         type="mesh3d",
+    #         color=mesh_colour[i],
+    #         x=cluster_x_coord_list,
+    #         y=cluster_y_coord_list,
+    #         z=cluster_z_coord_list
+    #     )
+    #     items_to_trace.append(mesh_trace)
+    #
+    # ############################################################################################################################################################
+    # # Edge Trace
+    #
+    # edge_x=[]
+    # edge_y=[]
+    # edge_z=[]
+    #
+    # for index, i in enumerate(reference_index):
+    #     if i != main_article_value:
+    #         x0 = x_coords[i]
+    #         x1 = x_coords[main_article_value]
+    #
+    #         y0 = y_coords[i]
+    #         y1 = y_coords[main_article_value]
+    #
+    #         z0 = nodes.loc[i, outlier_z]
+    #         z1 = nodes.loc[main_article_value, outlier_z]
+    #
+    #         edge_x.append(x0 ** scale_by)
+    #         edge_x.append(x1 ** scale_by)
+    #         edge_x.append(None)
+    #
+    #         edge_y.append(y0 ** scale_by)
+    #         edge_y.append(y1 ** scale_by)
+    #         edge_y.append(None)
+    #
+    #         edge_z.append(z0)
+    #         edge_z.append(z1)
+    #         edge_z.append(None)
+    #
+    #         reference_edge_trace=go.Scatter3d(
+    #             x=edge_x,
+    #             y=edge_y,
+    #             z=edge_z,
+    #             line=dict(width=1,
+    #                       # cmax=main_article_year,
+    #                       # cmin=1950,
+    #                       color='orange'),
+    #                       # colorscale='blugrn'),
+    #             hoverinfo='none',
+    #             mode='lines')
+    #
+    #         items_to_trace.append(reference_edge_trace)
+    #
+    # edge_x=[]
+    # edge_y=[]
+    # edge_z=[]
+    #
+    # for index, i in enumerate(citation_index):
+    #     if i != main_article_value:
+    #
+    #         x0 = x_coords[i]
+    #         x1 = x_coords[main_article_value]
+    #
+    #         y0 = y_coords[i]
+    #         y1 = y_coords[main_article_value]
+    #
+    #         z0 = nodes.loc[i, outlier_z]
+    #         z1 = nodes.loc[main_article_value, outlier_z]
+    #
+    #         edge_x.append(x0 ** scale_by)
+    #         edge_x.append(x1 ** scale_by)
+    #         edge_x.append(None)
+    #
+    #         edge_y.append(y0 ** scale_by)
+    #         edge_y.append(y1 ** scale_by)
+    #         edge_y.append(None)
+    #
+    #         edge_z.append(z0)
+    #         edge_z.append(z1)
+    #         edge_z.append(None)
+    #
+    #         citation_edge_trace=go.Scatter3d(
+    #             x=edge_x,
+    #             y=edge_y,
+    #             z=edge_z,
+    #             line=dict(width=1,
+    #                       # cmax=2022,
+    #                       # cmin=main_article_year,
+    #                       color='green'),
+    #                       # colorscale="inferno"),
+    #             hoverinfo='none',
+    #             mode='lines')
+    #
+    #         items_to_trace.append(citation_edge_trace)
 
     # #||||||  Hover of Middle of Connection for Details  |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
     #
@@ -656,3 +667,14 @@ def Visualise_on_Local_Host(
 
     if __name__ == '__main__':
         app.run_server(debug=True)
+
+Visualise_on_Local_Host('node.csv',
+                        'Title',
+                        'x data',
+                        'y data',
+                        'Year',
+                        'Clustered_x',
+                        'Clustered_y',
+                        'Year',
+                        'labels',
+                        )

@@ -126,11 +126,14 @@ def Plot_and_Cluster(
 
     result = pd.concat([umap_data, umap_embeddings], axis=1)
 
+    print('cluster labels')
+    print(cluster.labels_)
+    print(cluster.labels_.tolist())
 
     try:
         result['labels']=cluster.labels_
     except:
-        result['labels']=0
+        result['labels']='Failed to load'
 
 
     # result['outliers']=result.loc[result.labels == -1, result.labels]
