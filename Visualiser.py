@@ -1,53 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import json
+from textwrap import dedent as d
+
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-import networkx as nx
-import plotly.graph_objs as go
-
 import pandas as pd
-from colour import Color
-from datetime import datetime
-from textwrap import dedent as d
-import json
+import plotly.graph_objects as go
+from decimal import *
 
 # import the css template, and pass the css template into dash
 external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app=dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title="Journal Topic Modelling Visualisation"
 
-import numpy as np
 
-import plotly.graph_objects as go
-
-
-def Column_Filter(
-        df,
-        column,
-        value_to_remove='',
-):
-    values=df.loc[df[column] != value_to_remove, column].tolist()
-
-    return values
-
-
-# Visualize clusters
 def Visualise_3D_Network(
         nodes,
         node_title,
         data_x,
         data_y,
         z_column,
-        # embeddings_x,
-        # embeddings_y,
-        # outlier_x,
-        # outlier_y,
-        # outlier_z,
-        # cluster_x,
-        # cluster_y,
-        # cluster_z,
-        labels,
+        embeddings_x=None,
+        embeddings_y=None,
+        labels = None,
         edges = '',
         edge_influential = '',
         edge_source = '',
@@ -56,54 +33,85 @@ def Visualise_3D_Network(
         main_article_value=0
 ):
     if isinstance(nodes, str) and nodes.index('csv'):
-        print('Loading CSV as DataFrame...')
         nodes=pd.read_csv(nodes)
 
-        print('Confirming if loaded correctly...')
-        print(nodes[data_x][0:3])
+    main_article = nodes.loc[main_article_value]
 
-    items_to_trace=[]  # contains edge_trace, node_trace, middle_node_trace
+    print('Preparing Data for Visualisation...')
+    data=nodes[nodes['Abstract'] != 'Empty']  # Drop empty rows from input
 
-    x_coords = nodes[nodes[data_x] != 'Empty', data_x].tolist()
+    # Separate References (articles dated before main article date) and Citations (articles dated after)
 
-    x=nodes.index[nodes[data_x] != 'Empty'].tolist()
+    references=data[data[z_column]<=data.loc[0, z_column]]
+    references=references.iloc[1:]  # Drop main article (this will be added separately)
+
+    # To be used for plotting without colour change relating to clusters/outliers
+    # ref_node_x = references[data_x]
+    # ref_node_y = references[data_y]
+    # ref_node_z = references[z_column]
+    # ref_node_label = references[labels]
+    # ref_node_title = references['Title']
+    # ref_node_doi = references['DOI']
+
+    citations=data[data[z_column]>=data.loc[0, z_column]]
+    citations=citations.iloc[1:]  # Drop main article (this will be added separately)
+
+    # To be used for plotting without colour change relating to clusters/outliers
+    # cit_node_x = citations[data_x]
+    # cit_node_y = citations[data_y]
+    # cit_node_z = citations[z_column]
+    # cit_node_label = citations[labels]
+    # cit_node_title = citations['Title']
+    # cit_node_doi = citations['DOI']
+
+    # |||| Clusters & Outliers |||| #
+
+    # References #
+    ref_cluster=references[references[labels] != -1][labels]
+    ref_cluster_unique = ref_cluster.unique()
+    
+    # |||| Cluster data gen done in cluster loop, to enable customer colours/values |||| #
+    # ref_cluster_x = ref_cluster[data_x].tolist()
+    # ref_cluster_y = ref_cluster[data_y].tolist()
+    # ref_cluster_z = ref_cluster[z_column].tolist()
+    # ref_cluster_labels = ref_cluster[labels].tolist()
+    # ref_cluster_title = ref_cluster['Title'].tolist()
+    # ref_cluster_doi=ref_cluster['DOI'].tolist()
+
+    ref_outlier=references[references[labels] == -1]
+
+    ref_outlier_x=ref_outlier[data_x].tolist()
+    ref_outlier_y=ref_outlier[data_y].tolist()
+    ref_outlier_z=ref_outlier[z_column].tolist()
+    ref_outlier_labels=ref_outlier[labels].tolist()
+    ref_outlier_title=ref_outlier['Title'].tolist()
+    ref_outlier_abstract = ref_outlier['Abstract'].tolist()
+    ref_outlier_doi=ref_outlier['DOI'].tolist()
+
+    # Citations #
+    cit_cluster=citations[citations[labels] != -1][labels]
+    cit_cluster_unique=cit_cluster.unique()
+
+    # |||| Cluster data gen done in cluster loop, to enable customer colours/values |||| #
+    # cit_cluster_x = cit_cluster[data_x].tolist()
+    # cit_cluster_y = cit_cluster[data_y].tolist()
+    # cit_cluster_z = cit_cluster[z_column].tolist()
+    # cit_cluster_labels = cit_cluster[labels].tolist()
+    # cit_cluster_title = cit_cluster['Title'].tolist()
+    # cit_cluster_doi = cit_cluster['DOI'].tolist()
+
+    cit_outlier=citations[citations[labels] == -1]
+
+    cit_outlier_x=cit_outlier[data_x].tolist()
+    cit_outlier_y=cit_outlier[data_y].tolist()
+    cit_outlier_z=cit_outlier[z_column].tolist()
+    cit_outlier_labels=cit_outlier[labels].tolist()
+    cit_outlier_title=cit_outlier['Title'].tolist()
+    cit_outlier_abstract=cit_outlier['Abstract'].tolist()
+    cit_outlier_doi=cit_outlier['DOI'].tolist()
 
 
-def Column_Filter(
-        df,
-        column,
-        value_to_remove = '',
-):
-    values =  df[df[column] != value_to_remove].tolist()
-
-    for i in range(0, len(x)):
-        coords=nodes.loc[i, data_x]
-
-        if i in y_outlier: y_coords.append(y_outlier_coords)
-        if i in y_clustered: y_coords.append(y_clustered_coords)
-
-
-    y_coords=nodes[nodes[data_y] != 'Empty', data_y].tolist()
-
-    x_data_index = nodes.index[nodes[data_x] != 'Empty'].tolist()
-    y_data_index = nodes.index[nodes[data_y] != 'Empty'].tolist()
-    # x_embeddings_index = nodes.index[nodes[embeddings_x] != 'Empty'].tolist()
-    # y_embeddings_index = nodes.index[nodes[embeddings_y] != 'Empty'].tolist()
-
-    # z_coords=[] #  Not currently active as both outliers and clusters use the same z coord column ('Year')
-
-    # if outliers and clusters are in seperate columns, use below script to merge
-    # y_outlier=nodes.index[nodes[outlier_y].notna()].tolist()
-    # y_clustered=nodes.index[nodes[cluster_y].notna()].tolist()
-    #
-    # length_y=len(y_outlier)+len(y_clustered)
-    #
-    # for i in range(0, length_y):
-    #     y_outlier_coords=nodes.loc[i, outlier_y]
-    #     y_clustered_coords=nodes.loc[i, cluster_y]
-    #     if i in y_outlier: y_coords.append(y_outlier_coords)
-    #     if i in y_clustered: y_coords.append(y_clustered_coords)
-
+    items_to_trace = []
     #########################################################################################################################
     # # Creation of Lists of Influential Papers  (Separate lists to enable customisation)
     # list_of_influential_reference_indexes=[]
@@ -122,398 +130,375 @@ def Column_Filter(
     #         if edges[edge_target] == paper_id and edges[edge_influential] == True:  # filter to identity id in edges
     #             list_of_influential_citation_indexes.append(nodes.index[(nodes['Target'] == paper_id)])
 
-    ###############################################################################################################################################################
-    # Reference Trace
+    x_coord = main_article[data_x]
+    y_coord = main_article[data_y]
+    z_coord = main_article[z_column]
+    title = main_article[node_title]
 
-    main_article_year=nodes.loc[main_article_value, 'Year']
 
-    empty_references=nodes.index[nodes[data_y]=='Empty' and nodes[data_y]=='Empty'].to_list()
+    items_to_trace.append(go.Scatter3d(x=[Decimal(x_coord) ** Decimal(scale_by)],
+                                       y=[Decimal(y_coord) ** Decimal(scale_by)],
+                                       z=[z_coord],
+                                       hovertext=title,
+                                       # hoverinfo=abstract,
+                                       mode='markers',
+                                       # text=[],
+                                       # textposition="bottom center",
+                                       marker=dict(
+                                           size=5,
+                                           # color= nodes[outlier_z][i],
+                                           # set color to an array/list of desired values
+                                           color="black",  # choose a colorscale
+                                           opacity=1)))
 
-    print(type(nodes[z_column]))
-    print('on one')
-    print(type(main_article_year))
+   # Reference Trace
+    
+    # |||| Outlier Reference Trace |||| #
+    for i in range(len(ref_outlier_x)):
 
-    dirty_reference_index=nodes.index[int(nodes[z_column])<=int(main_article_year)].to_list()
-    dirty_reference_index.pop(main_article_value)
+        x_coord=ref_outlier_x[i]
+        y_coord=ref_outlier_y[i]
+        z_coord=ref_outlier_z[i]
 
-    # Removal of values with missing coordinates
-    reference_index=[ref_index for ref_index in dirty_reference_index if ref_index not in empty_references]
+        title = ref_outlier_title[i]
+        abstract = ref_outlier_abstract[i]
+        cluster_label = ref_outlier_labels[i]
+        doi = ref_outlier_doi[i]
 
-    # print(reference_index)
+        # Setting variables, to indicate influence
+        opacity=1
+        size=3
 
-    for i, item in enumerate(reference_index):
-        if item != main_article_value:
-            x_coord=x_coords[item]
-            y_coord=y_coords[item]
-            z_coord=nodes.loc[item, z_column]
-            # print(z_coord)
+        items_to_trace.append(go.Scatter3d(x=[x_coord ** scale_by],
+                                           y=[y_coord ** scale_by],
+                                           z=[z_coord],
+                                           hovertext=title,
+                                           hoverinfo=abstract,
+                                           mode='markers',
+                                           # text=[],
+                                           # textposition="bottom center",
+                                           marker=dict(
+                                               size=size,
+                                               # color= nodes[outlier_z][i],
+                                               cmax=main_article[z_column]+20,
+                                               cmin=1950,
+                                               color=[z_coord],
+                                               # set color to an array/list of desired values
+                                               colorscale="inferno",  # choose a colorscale
+                                               opacity=opacity)))
 
-            title=nodes.loc[item, node_title]
+        ref_outlier_edge_x = []
+        ref_outlier_edge_y = []
+        ref_outlier_edge_z = []
 
+        x0 = ref_outlier_x[i]
+        x1 = main_article[data_x]
+
+        y0 = ref_outlier_y[i]
+        y1 = main_article[data_y]
+
+        z0 = ref_outlier_z[i]
+        z1 = main_article[z_column]
+
+        ref_outlier_edge_x.append(x0 ** scale_by)
+        ref_outlier_edge_x.append(x1 ** scale_by)
+        ref_outlier_edge_x.append(None)
+
+        ref_outlier_edge_y.append(y0 ** scale_by)
+        ref_outlier_edge_y.append(y1 ** scale_by)
+        ref_outlier_edge_y.append(None)
+
+        ref_outlier_edge_z.append(z0)
+        ref_outlier_edge_z.append(z1)
+        ref_outlier_edge_z.append(None)
+
+        ref_outlier_edge_trace=go.Scatter3d(x=ref_outlier_edge_x,
+                                          y=ref_outlier_edge_y,
+                                          z=ref_outlier_edge_z,
+                                          line=dict(width=1,
+                                                    # cmax=main_article_year,
+                                                    # cmin=1950,
+                                                    color='black'),
+                                          # colorscale='blugrn'),
+                                          hoverinfo='none',
+                                          mode='lines')
+
+        items_to_trace.append(ref_outlier_edge_trace)
+
+        
+    # |||| Cluster Reference Trace |||| #
+    for i, item in enumerate(ref_cluster_unique):
+        
+        ref_cluster=references[references[labels] == item]
+
+        ref_cluster_x = ref_cluster[data_x].tolist()
+        ref_cluster_y = ref_cluster[data_y].tolist()
+        ref_cluster_z = ref_cluster[z_column].tolist()
+        ref_cluster_labels = ref_cluster[labels].tolist()
+        ref_cluster_title = ref_cluster['Title'].tolist()
+        ref_cluster_abstract=ref_cluster['Abstract'].tolist()
+        ref_cluster_doi=ref_cluster['DOI'].tolist()
+
+        for i in range(len(ref_cluster_x)):
+            x_coord=Decimal(ref_cluster_x[i]) ** Decimal(scale_by)
+            y_coord=Decimal(ref_cluster_y[i]) ** Decimal(scale_by)
+            z_coord=Decimal(ref_cluster_z[i])
+            title = ref_cluster_title[i]
+            abstract = ref_cluster_abstract[i]
+            cluster_label = ref_cluster_labels[i]
+            doi = ref_cluster_doi[i]
+
+    
             # Setting variables, to indicate influence
             opacity=1
             size=3
-
-            # Separate variable adjustments to enable future use
-            # if item in list_of_influential_reference_indexes:
-            #     opacity = 1
-            #     size = 12
-            #
-            # if item in list_of_influential_citation_indexes:
-            #     opacity=1
-            #     size = 12
-
-            items_to_trace.append(go.Scatter3d(x=[x_coord ** scale_by],
-                                               y=[y_coord ** scale_by],
+    
+            items_to_trace.append(go.Scatter3d(x=[x_coord],
+                                               y=[y_coord],
                                                z=[z_coord],
                                                hovertext=title,
-                                               hoverinfo="text",
+                                               # hoverinfo= str(abstract),
                                                mode='markers',
                                                # text=[],
                                                # textposition="bottom center",
                                                marker=dict(
                                                    size=size,
                                                    # color= nodes[outlier_z][i],
-                                                   cmax=main_article_year+20,
+                                                   cmax=main_article[z_column]+20,
                                                    cmin=1950,
                                                    color=[z_coord],
                                                    # set color to an array/list of desired values
                                                    colorscale="inferno",  # choose a colorscale
                                                    opacity=opacity)))
 
-    # Outlier Trace
+            ref_cluster_edge_x=[]
+            ref_cluster_edge_y=[]
+            ref_cluster_edge_z=[]
 
-    # node_index = nodes.index[nodes[outlier_x].notna() &
-    #                    nodes[outlier_y].notna() &
-    #                    nodes[outlier_z].notna()].to_list()
-    #
-    # for i, item in enumerate(node_index):
-    #
-    #     x_coord =nodes.loc[item, outlier_x]
-    #     y_coord =nodes.loc[item, outlier_y]
-    #     z_coord =nodes.loc[item, outlier_z]
-    #
-    #     title = nodes.loc[item, node_title]
-    #
-    #     # Setting variables, to indicate influence
-    #     opacity = 1
-    #     size = 3
-    #
-    #     # Separate variable adjustments to enable future use
-    #     # if item in list_of_influential_reference_indexes:
-    #     #     opacity = 1
-    #     #     size = 12
-    #     #
-    #     # if item in list_of_influential_citation_indexes:
-    #     #     opacity=1
-    #     #     size = 12
-    #
-    #     items_to_trace.append(go.Scatter3d(x=[x_coord],
-    #                                              y=[y_coord],
-    #                                              z=[z_coord],
-    #                                              hovertext= title,
-    #                                              hoverinfo="text",
-    #                                              mode='markers',
-    #                                              # text=[],
-    #                                              # textposition="bottom center",
-    #                                              marker=dict(
-    #                                                  size=size,
-    #                                                  # color= nodes[outlier_z][i],
-    #                                                  cmax=2020,
-    #                                                  cmin=1950,
-    #                                                  color= [z_coord],
-    #                                                  # set color to an array/list of desired values
-    #                                                  colorscale="Viridis",  # choose a colorscale
-    #                                                  opacity=opacity) ) )
+            x0=ref_cluster_x[i]
+            x1=main_article[data_x]
 
-    ################################################################################################################################################################
-    # Colour if Clustered
+            y0=ref_cluster_y[i]
+            y1=main_article[data_y]
 
-    # Tracing of Clustered Nodes
+            z0=ref_cluster_z[i]
+            z1=main_article[z_column]
 
-    empty_citations=nodes.index[nodes[data_y]=='Empty' and nodes[data_y]=='Empty'].to_list()
+            ref_cluster_edge_x.append(Decimal(x0) ** Decimal(scale_by))
+            ref_cluster_edge_x.append(Decimal(x1) ** Decimal(scale_by))
+            ref_cluster_edge_x.append(None)
 
-    dirty_citation_index=nodes.index[int(nodes[z_column])>int(main_article_year)].to_list()
-    dirty_citation_index.pop(main_article_value)
+            ref_cluster_edge_y.append(Decimal(y0) ** Decimal(scale_by))
+            ref_cluster_edge_y.append(Decimal(y1) ** Decimal(scale_by))
+            ref_cluster_edge_y.append(None)
 
-    # Removal of values with missing coordinates
-    citation_index=[ref_index for ref_index in dirty_citation_index if ref_index not in empty_citations]
+            ref_cluster_edge_z.append(z0)
+            ref_cluster_edge_z.append(z1)
+            ref_cluster_edge_z.append(None)
 
-    # print(citation_index)
-    # #
-    # print(len(citation_index))
-    # print(len(x_coords))
+            ref_cluster_edge_trace=go.Scatter3d(x=ref_cluster_edge_x,
+                                                y=ref_cluster_edge_y,
+                                                z=ref_cluster_edge_z,
+                                                line=dict(width=1,
+                                                          # cmax=main_article_year,
+                                                          # cmin=1950,
+                                                          color='orange'),
+                                                # colorscale='blugrn'),
+                                                hoverinfo='none',
+                                                mode='lines')
 
-    for i, item in enumerate(citation_index):
-        if item != main_article_value:
-            x_coord=x_coords[item]
-            y_coord=y_coords[item]
-            z_coord=nodes.loc[item, z_column]
+            items_to_trace.append(ref_cluster_edge_trace)
+
+        ref_cluster_x=[Decimal(x) ** Decimal(scale_by) for x in ref_cluster_x]
+        ref_cluster_y=[Decimal(x) ** Decimal(scale_by) for x in ref_cluster_y]
+
+        mesh_colour=['red', 'blue', 'green', 'orange', 'purple', 'yellow','red','pink','lightblue']
+
+        mesh_trace=go.Mesh3d(
+            alphahull=1,
+            name=i,
+            opacity=0.3,
+            color='orange',
+            x=ref_cluster_x,
+            y=ref_cluster_y,
+            z=ref_cluster_z
+        )
+        items_to_trace.append(mesh_trace)
+
+
+
+    # |||| Outlier Citation Trace |||| #
+    for i in range(len(cit_outlier_x)):
+        x_coord=cit_outlier_x[i]
+        y_coord=cit_outlier_y[i]
+        z_coord=cit_outlier_z[i]
+
+        title=cit_outlier_title[i]
+        abstract=cit_outlier_abstract[i]
+        cluster_label=cit_outlier_labels[i]
+        doi=cit_outlier_doi[i]
+
+        # Setting variables, to indicate influence
+        opacity=1
+        size=3
+
+        items_to_trace.append(go.Scatter3d(x=[x_coord ** scale_by],
+                                           y=[y_coord ** scale_by],
+                                           z=[z_coord],
+                                           hovertext=title,
+                                           hoverinfo=abstract,
+                                           mode='markers',
+                                           # text=[],
+                                           # textposition="bottom center",
+                                           marker=dict(
+                                               size=size,
+                                               # color= nodes[outlier_z][i],
+                                               cmax=main_article[z_column]+20,
+                                               cmin=main_article[z_column],
+                                               color=[z_coord],
+                                               # set color to an array/list of desired values
+                                               colorscale='orange',  # choose a colorscale
+                                               opacity=opacity)))
+        cit_outlier_edge_x=[]
+        cit_outlier_edge_y=[]
+        cit_outlier_edge_z=[]
+
+        x0=cit_outlier_x[i]
+        x1=main_article[data_x]
+
+        y0=cit_outlier_y[i]
+        y1=main_article[data_y]
+
+        z0=cit_outlier_z[i]
+        z1=main_article[z_column]
+
+        cit_outlier_edge_x.append(Decimal(x0) ** Decimal(scale_by))
+        cit_outlier_edge_x.append(Decimal(x1) ** Decimal(scale_by))
+        cit_outlier_edge_x.append(None)
+
+        cit_outlier_edge_y.append(Decimal(y0) ** Decimal(scale_by))
+        cit_outlier_edge_y.append(Decimal(y1) ** Decimal(scale_by))
+        cit_outlier_edge_y.append(None)
+
+        cit_outlier_edge_z.append(z0)
+        cit_outlier_edge_z.append(z1)
+        cit_outlier_edge_z.append(None)
+
+        cit_outlier_edge_trace=go.Scatter3d(x=cit_outlier_edge_x,
+                                          y=cit_outlier_edge_y,
+                                          z=cit_outlier_edge_z,
+                                          line=dict(width=1,
+                                                    # cmax=main_article_year,
+                                                    # cmin=1950,
+                                                    color='orange'),
+                                          # colorscale='blugrn'),
+                                          hoverinfo='none',
+                                          mode='lines')
+
+        items_to_trace.append(cit_outlier_edge_trace)
+
+    # |||| Cluster Citation Trace |||| #
+    for i, item in enumerate(cit_cluster_unique):
+
+        cit_cluster=citations[citations[labels] == item]
+
+        cit_cluster_x=cit_cluster[data_x].tolist()
+        cit_cluster_y=cit_cluster[data_y].tolist()
+        cit_cluster_z=cit_cluster[z_column].tolist()
+        cit_cluster_labels=cit_cluster[labels].tolist()
+        cit_cluster_title=cit_cluster['Title'].tolist()
+        cit_cluster_abstract=cit_cluster['Abstract'].tolist()
+        cit_cluster_doi=cit_cluster['DOI'].tolist()
+
+        for i in range(len(cit_cluster_x)):
+            x_coord=Decimal(cit_cluster_x[i]) ** Decimal(scale_by)
+            y_coord=Decimal(cit_cluster_y[i]) ** Decimal(scale_by)
+            z_coord=cit_cluster_z[i]
+            title=cit_cluster_title[i]
+            abstract=cit_cluster_abstract[i]
+            cluster_label=cit_cluster_labels[i]
+            doi=cit_cluster_doi[i]
 
             # Setting variables, to indicate influence
             opacity=1
             size=3
 
-            # Separate variable adjustments to enable future use
-            # if item in list_of_influential_reference_indexes:
-            #     opacity = 1
-            #     size = 12
-            #
-            # if item in list_of_influential_citation_indexes:
-            #     opacity=1
-            #     size = 12
-            title=nodes.loc[item, node_title]
-
-            items_to_trace.append(go.Scatter3d(x=[x_coord ** scale_by],
-                                               y=[y_coord ** scale_by],
+            items_to_trace.append(go.Scatter3d(x=[x_coord],
+                                               y=[y_coord],
                                                z=[z_coord],
                                                hovertext=title,
-                                               hoverinfo="text",
+                                               # hoverinfo=abstract,
                                                mode='markers',
+                                               # text=[],
+                                               # textposition="bottom center",
                                                marker=dict(
                                                    size=size,
-                                                   cmax=2022,
-                                                   cmin=main_article_year,
+                                                   # color= nodes[outlier_z][i],
+                                                   cmax=main_article[z_column]+20,
+                                                   cmin=main_article[z_column],
                                                    color=[z_coord],
                                                    # set color to an array/list of desired values
                                                    colorscale='blugrn',  # choose a colorscale
-                                                   opacity=opacity
-                                               )))
+                                                   opacity=opacity)))
 
-        # aggrnyl
-        # ', '
-        # agsunset
-        # ', '
-        # algae
-        # ', '
-        # amp
-        # ', '
-        # armyrose
-        # ', '
-        # balance
-        # ',
-        # 'blackbody', 'bluered', 'blues', 'blugrn', 'bluyl', 'brbg',
-        # 'brwnyl', 'bugn', 'bupu', 'burg', 'burgyl', 'cividis', 'curl',
-        # 'darkmint', 'deep', 'delta', 'dense', 'earth', 'edge', 'electric',
-        # 'emrld', 'fall', 'geyser', 'gnbu', 'gray', 'greens', 'greys',
-        # 'haline', 'hot', 'hsv', 'ice', 'icefire', 'inferno', 'jet',
-        # 'magenta', 'magma', 'matter', 'mint', 'mrybm', 'mygbm', 'oranges',
-        # 'orrd', 'oryel', 'oxy', 'peach', 'phase', 'picnic', 'pinkyl',
-        # 'piyg', 'plasma', 'plotly3', 'portland', 'prgn', 'pubu', 'pubugn',
-        # 'puor', 'purd', 'purp', 'purples', 'purpor', 'rainbow', 'rdbu',
-        # 'rdgy', 'rdpu', 'rdylbu', 'rdylgn', 'redor', 'reds', 'solar',
-        # 'spectral', 'speed', 'sunset', 'sunsetdark', 'teal', 'tealgrn',
-        # 'tealrose', 'tempo', 'temps', 'thermal', 'tropic', 'turbid',
-        # 'turbo', 'twilight', 'viridis', 'ylgn', 'ylgnbu', 'ylorbr',
-        # 'ylorrd'].
+            cit_cluster_edge_x=[]
+            cit_cluster_edge_y=[]
+            cit_cluster_edge_z=[]
 
-    # Colour Code Based on Clustering Combine with below meshing?
-    # for i, cluster_label in enumerate(nodes[cluster_labels].unique().tolist()):
-    #     cluster_type_index = nodes.index[(nodes[cluster_labels] == cluster_label) &
-    #                                      nodes[cluster_x].notna() &
-    #                                      nodes[cluster_y].notna() &
-    #                                      nodes[cluster_z].notna() &
-    #                                      nodes[]
-    #     ].tolist()
-    #     for i, item in enumerate(cluster_type_index):
-    #         x_coord=nodes.loc[item, cluster_x]
-    #         y_coord=nodes.loc[item, cluster_y]
-    #         z_coord=nodes.loc[item, cluster_z]
-    #
-    #         # Setting variables, to indicate influence
-    #         opacity = 1
-    #         size = 4
-    #
-    #         # Separate variable adjustments to enable future use
-    #         # if item in list_of_influential_reference_indexes:
-    #         #     opacity = 1
-    #         #     size = 12
-    #         #
-    #         # if item in list_of_influential_citation_indexes:
-    #         #     opacity=1
-    #         #     size = 12
-    #         title=nodes.loc[item, node_title]
-    #
-    #         items_to_trace.append(go.Scatter3d(x=[x_coord],
-    #                                              y=[y_coord],
-    #                                              z=[z_coord],
-    #                                              hovertext=title,
-    #                                              hoverinfo="text",
-    #                                              mode='markers',
-    #                                              marker=dict(
-    #                                                  size=size,
-    #                                                  cmax=2020,
-    #                                                  cmin=1950,
-    #                                                  color=[z_coord],
-    #                                                  # set color to an array/list of desired values
-    #                                                  colorscale='sunset',  # choose a colorscale
-    #                                                  opacity=opacity
-    #                                              )))
+            x0=cit_cluster_x[i]
+            x1=main_article[data_x]
 
-    # ################################################################################################################################################################
-    # # Cluster Mesh
-    #
-    # cluster_labels_list=[x for x in nodes[labels].unique().tolist() if str(x) != 'nan']
-    #
-    #
-    # for i, cluster_label in enumerate(cluster_labels_list):
-    #     cluster_index_list=nodes.index[nodes[labels] == cluster_label].to_list()
-    #
-    #     cluster_x_coord_list=nodes.loc[cluster_index_list, cluster_x].to_list()
-    #     cluster_y_coord_list=nodes.loc[cluster_index_list, cluster_y].to_list()
-    #     cluster_z_coord_list=nodes.loc[cluster_index_list, cluster_z].to_list()
-    #
-    #     cluster_x_coord_list=[x ** scale_by for x in cluster_x_coord_list]
-    #     cluster_y_coord_list=[x ** scale_by for x in cluster_y_coord_list]
-    #
-    #     mesh_colour=['red', 'blue', 'green']
-    #
-    #     mesh_trace=dict(
-    #         alphahull=10,
-    #         name=i,
-    #         opacity=0.1,
-    #         type="mesh3d",
-    #         color=mesh_colour[i],
-    #         x=cluster_x_coord_list,
-    #         y=cluster_y_coord_list,
-    #         z=cluster_z_coord_list
-    #     )
-    #     items_to_trace.append(mesh_trace)
-    #
-    # ############################################################################################################################################################
-    # # Edge Trace
-    #
-    # edge_x=[]
-    # edge_y=[]
-    # edge_z=[]
-    #
-    # for index, i in enumerate(reference_index):
-    #     if i != main_article_value:
-    #         x0 = x_coords[i]
-    #         x1 = x_coords[main_article_value]
-    #
-    #         y0 = y_coords[i]
-    #         y1 = y_coords[main_article_value]
-    #
-    #         z0 = nodes.loc[i, outlier_z]
-    #         z1 = nodes.loc[main_article_value, outlier_z]
-    #
-    #         edge_x.append(x0 ** scale_by)
-    #         edge_x.append(x1 ** scale_by)
-    #         edge_x.append(None)
-    #
-    #         edge_y.append(y0 ** scale_by)
-    #         edge_y.append(y1 ** scale_by)
-    #         edge_y.append(None)
-    #
-    #         edge_z.append(z0)
-    #         edge_z.append(z1)
-    #         edge_z.append(None)
-    #
-    #         reference_edge_trace=go.Scatter3d(
-    #             x=edge_x,
-    #             y=edge_y,
-    #             z=edge_z,
-    #             line=dict(width=1,
-    #                       # cmax=main_article_year,
-    #                       # cmin=1950,
-    #                       color='orange'),
-    #                       # colorscale='blugrn'),
-    #             hoverinfo='none',
-    #             mode='lines')
-    #
-    #         items_to_trace.append(reference_edge_trace)
-    #
-    # edge_x=[]
-    # edge_y=[]
-    # edge_z=[]
-    #
-    # for index, i in enumerate(citation_index):
-    #     if i != main_article_value:
-    #
-    #         x0 = x_coords[i]
-    #         x1 = x_coords[main_article_value]
-    #
-    #         y0 = y_coords[i]
-    #         y1 = y_coords[main_article_value]
-    #
-    #         z0 = nodes.loc[i, outlier_z]
-    #         z1 = nodes.loc[main_article_value, outlier_z]
-    #
-    #         edge_x.append(x0 ** scale_by)
-    #         edge_x.append(x1 ** scale_by)
-    #         edge_x.append(None)
-    #
-    #         edge_y.append(y0 ** scale_by)
-    #         edge_y.append(y1 ** scale_by)
-    #         edge_y.append(None)
-    #
-    #         edge_z.append(z0)
-    #         edge_z.append(z1)
-    #         edge_z.append(None)
-    #
-    #         citation_edge_trace=go.Scatter3d(
-    #             x=edge_x,
-    #             y=edge_y,
-    #             z=edge_z,
-    #             line=dict(width=1,
-    #                       # cmax=2022,
-    #                       # cmin=main_article_year,
-    #                       color='green'),
-    #                       # colorscale="inferno"),
-    #             hoverinfo='none',
-    #             mode='lines')
-    #
-    #         items_to_trace.append(citation_edge_trace)
+            y0=cit_cluster_y[i]
+            y1=main_article[data_y]
 
-    # #||||||  Hover of Middle of Connection for Details  |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
-    #
-    #  middle_hover_trace=go.Scatter(x=[], y=[], hovertext=[], mode='markers', hoverinfo="text",
-    #                                marker={'size': 20, 'color': 'LightSkyBlue'},
-    #                                opacity=0)
-    #  #
-    #  # index=0
-    #  # for edge in G.edges:
-    #  #     x0, y0=G.nodes[edge[0]]['pos']
-    #  #     x1, y1=G.nodes[edge[1]]['pos']
-    #  #     hovertext="Citation of: "+str(G.edges[edge]['Source'])+"<br>"+ \
-    #  #               "In Paper: "+str(G.edges[edge]['Target'])+"<br>"+ \
-    #  #               "Influential: "+str(G.edges[edge]['TransactionAmt'])+"<br>"+ \
-    #  #               "Publish Date: "+str(G.edges[edge]['Date'])
-    #  #     middle_hover_trace['x']+=tuple([(x0+x1) / 2])
-    #  #     middle_hover_trace['y']+=tuple([(y0+y1) / 2])
-    #  #     middle_hover_trace['hovertext']+=tuple([hovertext])
-    #  #     index=index+1
+            z0=cit_cluster_z[i]
+            z1=main_article[z_column]
 
-    # nodes = go.Scatter3d(x=outliers.x,
-    #                                  y=outliers.y,
-    #                                  z=data['Year'][abstract_df.index.to_list()],
-    #                                  mode='markers',
-    #                                  marker=dict(
-    #                                      size=12,
-    #                                      color=data['Year'][abstract_df.index.to_list()],
-    #                                      # set color to an array/list of desired values
-    #                                      colorscale='Viridis',  # choose a colorscale
-    #                                      opacity=1
-    #                                  ))
-    #
-    # edges = go.Scatter3d(x=outliers.x,
-    #                                  y=outliers.y,
-    #                                  z=data['Year'][abstract_df.index.to_list()],
-    #                                  mode='markers',
-    #                                  marker=dict(
-    #                                      size=12,
-    #                                      color=data['Year'][abstract_df.index.to_list()],
-    #                                      # set color to an array/list of desired values
-    #                                      colorscale='Viridis',  # choose a colorscale
-    #                                      opacity=1
-    #                                  ))
+            cit_cluster_edge_x.append(Decimal(x0) ** Decimal(scale_by))
+            cit_cluster_edge_x.append(Decimal(x1) ** Decimal(scale_by))
+            cit_cluster_edge_x.append(None)
 
+            cit_cluster_edge_y.append(Decimal(y0) ** Decimal(scale_by))
+            cit_cluster_edge_y.append(Decimal(y1) ** Decimal(scale_by))
+            cit_cluster_edge_y.append(None)
+
+            cit_cluster_edge_z.append(z0)
+            cit_cluster_edge_z.append(z1)
+            cit_cluster_edge_z.append(None)
+
+            cit_cluster_edge_trace=go.Scatter3d(x=cit_cluster_edge_x,
+                                                y=cit_cluster_edge_y,
+                                                z=cit_cluster_edge_z,
+                                                line=dict(width=1,
+                                                          # cmax=main_article_year,
+                                                          # cmin=1950,
+                                                          color='lightblue'),
+                                                # colorscale='blugrn'),
+                                                hoverinfo='none',
+                                                mode='lines')
+
+            items_to_trace.append(cit_cluster_edge_trace)
+
+        cit_cluster_x_list=[Decimal(x) ** Decimal(scale_by) for x in cit_cluster_x]
+        cit_cluster_y_list=[Decimal(x) ** Decimal(scale_by) for x in cit_cluster_y]
+
+        mesh_colour=['red', 'blue', 'green', 'orange', 'purple', 'yellow', 'orange', 'pink', 'lightblue', 'blue', 'green', 'orange', 'purple', 'yellow', 'orange', 'pink', 'lightblue']
+
+        mesh_trace=go.Mesh3d(
+            alphahull=1,
+            name=i,
+            opacity=0.3,
+            color='lightblue',
+            x=cit_cluster_x_list,
+            y=cit_cluster_y_list,
+            z=cit_cluster_z
+        )
+        items_to_trace.append(mesh_trace)
 
     #################################################################################################################################################################
     figure={
         "data": items_to_trace,
-        "layout": go.Layout(title='Interactive Journal Network Visualization', showlegend=False, hovermode='closest',
+        "layout": go.Layout(title='Journal Network Visualization', showlegend=False, hovermode='closest',
                             margin={'b': 40, 'l': 40, 'r': 40, 't': 40},
                             xaxis={'showgrid': False, 'zeroline': False, 'showticklabels': False, 'type': 'log'},
                             yaxis={'showgrid': False, 'zeroline': False, 'showticklabels': False},
@@ -547,17 +532,39 @@ def Column_Filter(
     return figure
 
 
+#### Plotly Colour Gradients ####
+# aggrnyl', 'agsunset', 'algae', 'amp', 'armyrose', 'balance',
+# 'blackbody', 'bluered', 'blues', 'blugrn', 'bluyl', 'brbg',
+# 'brwnyl', 'bugn', 'bupu', 'burg', 'burgyl', 'cividis', 'curl',
+# 'darkmint', 'deep', 'delta', 'dense', 'earth', 'edge', 'electric',
+# 'emrld', 'fall', 'geyser', 'gnbu', 'gray', 'greens', 'greys',
+# 'haline', 'hot', 'hsv', 'ice', 'icefire', 'inferno', 'jet',
+# 'magenta', 'magma', 'matter', 'mint', 'mrybm', 'mygbm', 'oranges',
+# 'orrd', 'oryel', 'oxy', 'peach', 'phase', 'picnic', 'pinkyl',
+# 'piyg', 'plasma', 'plotly3', 'portland', 'prgn', 'pubu', 'pubugn',
+# 'puor', 'purd', 'purp', 'purples', 'purpor', 'rainbow', 'rdbu',
+# 'rdgy', 'rdpu', 'rdylbu', 'rdylgn', 'redor', 'reds', 'solar',
+# 'spectral', 'speed', 'sunset', 'sunsetdark', 'teal', 'tealgrn',
+# 'tealrose', 'tempo', 'temps', 'thermal', 'tropic', 'turbid',
+# 'turbo', 'twilight', 'viridis', 'ylgn', 'ylgnbu', 'ylorbr',
+# 'ylorrd'].
+
 
 def Visualise_on_Local_Host(
         nodes,
         node_title,
-        outlier_x,
-        outlier_y,
-        outlier_z,
-        cluster_x,
-        cluster_y,
-        cluster_z,
-        cluster_labels,
+        data_x,
+        data_y,
+        z_column,
+        embeddings_x=None,
+        embeddings_y=None,
+        labels='',
+        edges='',
+        edge_influential='',
+        edge_source='',
+        edge_target='',
+        scale_by=2,
+        main_article_value=0
 ):
     ######################################################################################################################################################################
     # styles: for right side hover/click component
@@ -584,13 +591,10 @@ def Visualise_on_Local_Host(
                     children=[dcc.Graph(id="my-graph",
                                         figure=Visualise_3D_Network(nodes,
                                                                     node_title,
-                                                                    outlier_x,
-                                                                    outlier_y,
-                                                                    outlier_z,
-                                                                    cluster_x,
-                                                                    cluster_y,
-                                                                    cluster_z,
-                                                                    cluster_labels,
+                                                                    data_x,
+                                                                    data_y,
+                                                                    z_column,
+                                                                    labels=labels
                                                                     ))],
                 ),
 
@@ -668,13 +672,10 @@ def Visualise_on_Local_Host(
     if __name__ == '__main__':
         app.run_server(debug=True)
 
-Visualise_on_Local_Host('node.csv',
-                        'Title',
-                        'x data',
-                        'y data',
-                        'Year',
-                        'Clustered_x',
-                        'Clustered_y',
-                        'Year',
-                        'labels',
-                        )
+# Visualise_on_Local_Host('node.csv',
+#                         'Title',
+#                         'x data',
+#                         'y data',
+#                         'Year',
+#                         labels='labels',
+#                         )

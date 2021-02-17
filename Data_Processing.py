@@ -105,35 +105,48 @@ def Plot_and_Cluster(
                               min_dist=0.3,
                               metric='correlation').fit_transform(embeddings.data)
 
+    embedding=pd.DataFrame(umap_embeddings, columns=['embeddings x', 'embeddings y'])
+
+    print(umap_embeddings)
+
     print('Umap Data Transformation...')
-    umap_data=umap.UMAP(n_neighbors=15,
-                        n_components=2,
-                        min_dist=0.0,
+    umap_data=umap.UMAP(n_neighbors=3,
+                        # n_components=2,
+                        min_dist=0.001,
                         metric='cosine').fit_transform(embeddings)
+    data=pd.DataFrame(umap_data, columns=['data x', 'data y'])
+
+    print(umap_data)
     print('Umap Successful')
 
     print('HBDScan Clustering...')
-    cluster=hdbscan.HDBSCAN(min_cluster_size=5,
-                            metric='euclidean',
-                            cluster_selection_method='eom',
-                            allow_single_cluster=True).fit(umap_embeddings)
+    clusterer=hdbscan.HDBSCAN(min_cluster_size=5, min_samples=3, gen_min_span_tree=True)
+
+    embeddings_cluster = clusterer.fit(umap_embeddings)
+
+    embeddings_labels = embeddings_cluster.labels_
+    e_labels=pd.DataFrame(embeddings_labels, columns=['e_labels'])
+
+    embeddings_df=pd.concat([embedding, e_labels], axis=1)
+    
+    print(embeddings_df)
+
+    data_cluster=clusterer.fit(umap_data)
+
+    data_labels=data_cluster.labels_
+    d_labels=pd.DataFrame(data_labels, columns=['labels'])
+
+    data_df=pd.concat([data, d_labels], axis=1)
+
+    print(data_df)
 
     print('Hdbscan Clustering Successful')
 
     print('Preparing Data for Export...')
-    umap_data=pd.DataFrame(umap_data, columns=['x data', 'y data'])
-    umap_embeddings=pd.DataFrame(umap_embeddings, columns=['x embeddings', 'y embeddings'])
+    # umap_data=pd.DataFrame(umap_data, columns=['x data', 'y data'])
+    # umap_embeddings=pd.DataFrame(umap_embeddings, columns=['x embeddings', 'y embeddings'])
 
-    result = pd.concat([umap_data, umap_embeddings], axis=1)
-
-    print('cluster labels')
-    print(cluster.labels_)
-    print(cluster.labels_.tolist())
-
-    try:
-        result['labels']=cluster.labels_
-    except:
-        result['labels']='Failed to load'
+    result = pd.concat([data_df, embeddings_df], axis=1)
 
 
     # result['outliers']=result.loc[result.labels == -1, result.labels]
@@ -141,7 +154,7 @@ def Plot_and_Cluster(
 
     print('Data Exported')
 
-    # result.to_csv('result.csv')
+    result.to_csv('result.csv')
 
     return result
     
@@ -167,11 +180,12 @@ def Merge_Mapping_Results(
         try:
             index = index_dictionary[i]
 
-            df.loc[i, 'x data'] = results.loc[index,'x data']
-            df.loc[i,'y data']=results.loc[index,'y data']
-            df.loc[i,'x embeddings']=results.loc[index,'x embeddings']
-            df.loc[i,'y embeddings']=results.loc[index,'y embeddings']
-            df.loc[i,'labels']=results.loc[index,'labels']
+            df.loc[i, 'x data'] = results.loc[index, 'data x']
+            df.loc[i, 'y data']=results.loc[index, 'data y']
+            df.loc[i, 'x embeddings']=results.loc[index, 'embeddings x']
+            df.loc[i, 'y embeddings']=results.loc[index, 'embeddings y']
+            df.loc[i, 'labels']=results.loc[index, 'labels']
+            df.loc[i, 'e_labels']=results.loc[index, 'e_labels']
 
         except:
             empty += 1

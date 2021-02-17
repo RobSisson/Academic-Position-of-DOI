@@ -1,12 +1,14 @@
-import Data_Collection, Data_Population, Data_Processing, Visualiser
-
-import pandas as pd
-
 doi = '10.1093/cje/bey045'
+
+import Data_Collection
 
 data = Data_Collection.Doi_to_Data(doi)
 
+import Data_Population
+
 populated = Data_Population.Populate_Journal_Info(data[0])
+
+import Data_Processing
 
 prepared = Data_Processing.Prepare_Data(populated, 'Abstract', 'Title')
 
@@ -18,13 +20,16 @@ result = Data_Processing.Merge_Mapping_Results(populated, coords, prepared[1])
 
 result.to_csv('node.csv')
 
-# Visualiser.Visualise_on_Local_Host(result,
+
+# Once above run below, can be done by running Visualiser.py
+# import Visualiser
+#
+# Visualiser.Visualise_on_Local_Host('node.csv',
 #                                    'Title',
 #                                    'x data',
 #                                    'y data',
 #                                    'Year',
-#                                    'Clustered_x',
-#                                    'Clustered_y',
-#                                    'Year',
-#                                    'labels',
+#                                    labels='labels',
 #                                    )
+
+
