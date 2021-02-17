@@ -19,6 +19,7 @@ A data pipeline which collects the references and citations of a specified DOI, 
  - Add additional cluster details
  - Add additional metrics for clustering, and in vis adjustment
  - Make UMap factors more easily adjustable (ideally within the visualiser)
+ - Redistribute points of data based on date, in order to reduce cluttering and make insights more accessible
 
 # Future Developments
  - Implement wider article acquisition, including the references and citations of other articles to build up a more holistic view of the immediate topic; especially aiming to highlight cross-referencing
